@@ -1,0 +1,8 @@
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "autter_version": "1.7.5",
+  "base_commit_sha": "326a7f4d4f1068ce5659fa2edef97449214229c7",
+  "branch": "main",
+  "prompts": {}
+}
