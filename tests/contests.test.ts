@@ -20,9 +20,14 @@ describe('contests', () => {
     const contest = await createContest(admin.token, { name: 'Node.js Deep Dive', tags: ['Node.js', 'backend'] });
     expect(contest).toMatchObject({ access_level: 'normal', difficulty: 'intermediate', tags: ['node.js', 'backend'], status: 'active' });
 
-    const patched = await api().patch(`/api/contests/${contest.id}`).set(auth(admin.token)).send({ access_level: 'vip', prize: null });
+    const patched = await api().patch(`/api/contests/${contest.id}`).set(auth(admin.token)).send({ access_level: 'vip' });
     expect(patched.status).toBe(200);
-    expect(patched.body).toMatchObject({ access_level: 'vip', prize: null });
+    // only the named field changes, the rest keeps its value (no create-time defaults sneaking in)
+    expect(patched.body).toMatchObject({ access_level: 'vip', prize: 'A sticker', tags: ['node.js', 'backend'], difficulty: 'intermediate' });
+    const cleared = await api().patch(`/api/contests/${contest.id}`).set(auth(admin.token)).send({ prize: null });
+    expect(cleared.body.prize).toBeNull();
+    const badPatch = await api().patch(`/api/contests/${contest.id}`).set(auth(admin.token)).send({ end_time: new Date(Date.now() - 5 * hour) });
+    expect(badPatch.status).toBe(400);
 
     const detail = await api().get(`/api/contests/${contest.id}`);
     expect(detail.status).toBe(200);
