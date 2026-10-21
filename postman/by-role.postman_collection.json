@@ -1,0 +1,1373 @@
+{
+  "info": {
+    "_postman_id": "5b8e21c4-contest-by-role",
+    "name": "Contest System - by role",
+    "description": "One folder per role. Run the folders top to bottom (or the whole collection with the Runner): folder 0 signs in as every role and stores the tokens in collection variables, each later folder uses its own token.\n\nRoles:\n- Guest: browse contests, leaderboards, natural-language search.\n- User: + join and play normal contests, own result/history/in-progress/prizes.\n- VIP: + VIP-only contests.\n- Admin: + create/edit/delete contests, add or generate questions, change roles, finalize.\n\nNeeds the API running with the seed data (npm run migrate && npm run seed). No environment file required; baseUrl is a collection variable.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "0 Setup - sign in as each role (run first)",
+      "description": "Gets a token for every role. Admin is seeded. The normal user and the VIP are registered fresh on every run so the walkthrough can be repeated (a user may submit a contest only once).\n\nSeeded accounts if you prefer them: admin@contest.dev / Admin123!, vip@contest.dev / Vip12345!, user@contest.dev / User1234!",
+      "item": [
+        {
+          "name": "Login admin",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/auth/login",
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"admin@contest.dev\",\n  \"password\": \"Admin123!\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.collectionVariables.set('adminToken', pm.response.json().token);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Register a fresh normal user",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/auth/register",
+            "auth": {
+              "type": "noauth"
+            },
+            "description": "Anyone can register. New accounts always get the role \"user\".",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Normal User\",\n  \"email\": \"{{userEmail}}\",\n  \"password\": \"password123\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.collectionVariables.set('userEmail', 'user-' + Date.now() + '@example.com');"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 201', () => pm.response.to.have.status(201));",
+                  "pm.collectionVariables.set('userToken', pm.response.json().token);",
+                  "pm.collectionVariables.set('userId', pm.response.json().user.id);",
+                  "pm.test('new accounts are role user', () => pm.expect(pm.response.json().user.role).to.eql('user'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Register a user who will become VIP",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/auth/register",
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"VIP User\",\n  \"email\": \"{{vipEmail}}\",\n  \"password\": \"password123\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.collectionVariables.set('vipEmail', 'vip-' + Date.now() + '@example.com');"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 201', () => pm.response.to.have.status(201));",
+                  "pm.collectionVariables.set('vipUserId', pm.response.json().user.id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Admin promotes that user to VIP",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/users/{{vipUserId}}/role",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "description": "Only an admin can change roles. Allowed values: user, vip, admin.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"role\": \"vip\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('role is now vip', () => pm.expect(pm.response.json().role).to.eql('vip'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Login as the new VIP",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/auth/login",
+            "auth": {
+              "type": "noauth"
+            },
+            "description": "A token carries the role it was issued with, so after a promotion the user signs in again to get a VIP token.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{vipEmail}}\",\n  \"password\": \"password123\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.collectionVariables.set('vipToken', pm.response.json().token);"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "1 Guest (no token)",
+      "description": "What a visitor can do without signing in: browse contests, leaderboards and the natural-language search. Joining, questions and personal pages are refused with 401.",
+      "auth": {
+        "type": "noauth"
+      },
+      "item": [
+        {
+          "name": "Health",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/health"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "List contests",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/contests",
+            "description": "Everyone sees every contest. can_participate tells the caller whether they could join; for a guest it is always false. This request also remembers the ids of the seeded normal and VIP contests for the next folders."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "const items = pm.response.json().items;",
+                  "const normal = items.find((c) => c.name === 'JavaScript Basics') || items.find((c) => c.status === 'active' && c.access_level === 'normal');",
+                  "const vip = items.find((c) => c.name === 'Node.js Backend Challenge') || items.find((c) => c.status === 'active' && c.access_level === 'vip');",
+                  "if (normal) pm.collectionVariables.set('contestId', normal.id);",
+                  "if (vip) pm.collectionVariables.set('vipContestId', vip.id);",
+                  "pm.test('guest cannot participate anywhere', () => pm.expect(items.every((c) => c.can_participate === false)).to.be.true);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "View one contest",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/contests/{{contestId}}"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Filter contests",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/contests?status=active&access=normal",
+            "description": "Filters: status (upcoming|active|ended), access (normal|vip), difficulty, tag, q (full-text), page, pageSize."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Contest leaderboard",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/contests/{{contestId}}/leaderboard"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Overall leaderboard",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/leaderboard"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Natural-language search",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/contests/search?q=Show me active VIP contests",
+            "description": "Open to everyone, rate limited per IP (10/min). The response shows the filters the AI extracted and the matching contests. With AI_PROVIDER=mock the filters come from keyword rules."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Try to join (401)",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": "{{baseUrl}}/contests/{{contestId}}/join"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 401', () => pm.response.to.have.status(401));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Try to read questions (401)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/contests/{{contestId}}/questions"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 401', () => pm.response.to.have.status(401));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "2 Normal user",
+      "description": "A signed-in user with role \"user\": joins and plays normal contests, sees own results, history, in-progress contests and prizes. VIP contests and admin actions are refused.",
+      "auth": {
+        "type": "bearer",
+        "bearer": [
+          {
+            "key": "token",
+            "value": "{{userToken}}",
+            "type": "string"
+          }
+        ]
+      },
+      "item": [
+        {
+          "name": "Who am I",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/auth/me"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Join a VIP contest (403 VIP_ONLY)",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": "{{baseUrl}}/contests/{{vipContestId}}/join"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 403', () => pm.response.to.have.status(403));",
+                  "pm.test('code VIP_ONLY', () => pm.expect(pm.response.json().error.code).to.eql('VIP_ONLY'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Questions before joining (403 NOT_JOINED)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/contests/{{contestId}}/questions",
+            "description": "Questions are only visible after joining, so nobody can read them without being on the participant list."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 403', () => pm.response.to.have.status(403));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Join the normal contest",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": "{{baseUrl}}/contests/{{contestId}}/join",
+            "description": "201 on first join, 200 if already joined. Only while the contest is active."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200 or 201', () => pm.expect([200,201]).to.include(pm.response.code));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get questions (answers hidden)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/contests/{{contestId}}/questions"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "const qs = pm.response.json().questions;",
+                  "qs.forEach((q, i) => pm.collectionVariables.set('q' + (i + 1), q.id));",
+                  "pm.test('correct answers are not exposed', () => pm.expect(qs.every((q) => q.correct_answers === undefined)).to.be.true);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Submit answers",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/contests/{{contestId}}/submit",
+            "description": "One submission per user per contest. The last answer is wrong on purpose, so expect 3 of 4. Multi-select must match the full set; a partial match scores 0 for that question.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"answers\": [\n    {\n      \"questionId\": \"{{q1}}\",\n      \"selected\": [\n        \"\\\"object\\\"\"\n      ]\n    },\n    {\n      \"questionId\": \"{{q2}}\",\n      \"selected\": [\n        \"String\",\n        \"Number\",\n        \"Symbol\"\n      ]\n    },\n    {\n      \"questionId\": \"{{q3}}\",\n      \"selected\": [\n        \"True\"\n      ]\n    },\n    {\n      \"questionId\": \"{{q4}}\",\n      \"selected\": [\n        \"pop\"\n      ]\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('scored 3 of 4', () => { const r = pm.response.json(); pm.expect(r.score).to.eql(3); pm.expect(r.maxScore).to.eql(4); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Submit again (409 ALREADY_SUBMITTED)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/contests/{{contestId}}/submit",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"answers\": []\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 409', () => pm.response.to.have.status(409));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "My result",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/contests/{{contestId}}/result",
+            "description": "Per-question correctness with the correct answers and explanations, only after submitting."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Leaderboard with my position",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/contests/{{contestId}}/leaderboard",
+            "description": "Same leaderboard a guest sees, plus a \"me\" entry with the caller's rank."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "My history",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/me/history"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "My in-progress contests",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/me/in-progress",
+            "description": "Contests joined but not submitted. missed=true once the contest has ended."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "My prizes",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/me/prizes"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Try to create a contest (403)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/contests",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Not allowed\",\n  \"start_time\": \"2030-01-01T00:00:00.000Z\",\n  \"end_time\": \"2030-01-02T00:00:00.000Z\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 403', () => pm.response.to.have.status(403));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "3 VIP user",
+      "description": "Everything a normal user can do, plus VIP-only contests.",
+      "auth": {
+        "type": "bearer",
+        "bearer": [
+          {
+            "key": "token",
+            "value": "{{vipToken}}",
+            "type": "string"
+          }
+        ]
+      },
+      "item": [
+        {
+          "name": "Who am I",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/auth/me"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "List VIP contests",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/contests?access=vip"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "const items = pm.response.json().items;",
+                  "pm.test('vip can participate in active vip contests', () => pm.expect(items.filter((c) => c.status === 'active').every((c) => c.can_participate)).to.be.true);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Join the VIP contest",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": "{{baseUrl}}/contests/{{vipContestId}}/join"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200 or 201', () => pm.expect([200,201]).to.include(pm.response.code));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get questions",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/contests/{{vipContestId}}/questions"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "const qs = pm.response.json().questions;",
+                  "qs.forEach((q, i) => pm.collectionVariables.set('q' + (i + 1), q.id));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Submit answers (full marks)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/contests/{{vipContestId}}/submit",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"answers\": [\n    {\n      \"questionId\": \"{{q1}}\",\n      \"selected\": [\n        \"check\"\n      ]\n    },\n    {\n      \"questionId\": \"{{q2}}\",\n      \"selected\": [\n        \"data\",\n        \"end\",\n        \"error\"\n      ]\n    },\n    {\n      \"questionId\": \"{{q3}}\",\n      \"selected\": [\n        \"True\"\n      ]\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('full marks', () => { const r = pm.response.json(); pm.expect(r.score).to.eql(r.maxScore); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "My result",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/contests/{{vipContestId}}/result"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "VIP contest leaderboard",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/contests/{{vipContestId}}/leaderboard"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "My history",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/me/history"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Try to add questions (403)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/contests/{{vipContestId}}/questions",
+            "description": "VIP is still not an admin.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"questions\": [\n    {\n      \"type\": \"true-false\",\n      \"text\": \"Nope\",\n      \"options\": [\n        \"True\",\n        \"False\"\n      ],\n      \"correct_answers\": [\n        \"True\"\n      ]\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 403', () => pm.response.to.have.status(403));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "4 Admin",
+      "description": "Manages contests and questions, generates questions with AI, changes roles and finalizes contests. Admins can also join and play like any user.",
+      "auth": {
+        "type": "bearer",
+        "bearer": [
+          {
+            "key": "token",
+            "value": "{{adminToken}}",
+            "type": "string"
+          }
+        ]
+      },
+      "item": [
+        {
+          "name": "Who am I",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/auth/me"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Create a contest",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/contests",
+            "description": "start_time / end_time decide the status (upcoming, active, ended). The pre-request script makes it active now and open for a day.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Postman Admin Contest\",\n  \"description\": \"Created from the by-role collection.\",\n  \"access_level\": \"normal\",\n  \"difficulty\": \"advanced\",\n  \"tags\": [\n    \"postman\",\n    \"backend\"\n  ],\n  \"prize\": \"Rs 2,000 voucher\",\n  \"start_time\": \"{{startTime}}\",\n  \"end_time\": \"{{endTime}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const now = Date.now();",
+                  "pm.collectionVariables.set('startTime', new Date(now - 60 * 1000).toISOString());",
+                  "pm.collectionVariables.set('endTime', new Date(now + 24 * 60 * 60 * 1000).toISOString());"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 201', () => pm.response.to.have.status(201));",
+                  "pm.collectionVariables.set('adminContestId', pm.response.json().id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Edit the contest",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/contests/{{adminContestId}}",
+            "description": "Only the fields sent are changed.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"description\": \"Edited from Postman.\",\n  \"prize\": \"Rs 3,000 voucher\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('prize updated, tags kept', () => { const c = pm.response.json(); pm.expect(c.prize).to.eql('Rs 3,000 voucher'); pm.expect(c.tags).to.include('postman'); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Add questions",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/contests/{{adminContestId}}/questions",
+            "description": "All three types. points defaults to 1.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"questions\": [\n    {\n      \"type\": \"single-select\",\n      \"text\": \"Which phase of the event loop runs setImmediate callbacks?\",\n      \"options\": [\n        \"timers\",\n        \"poll\",\n        \"check\",\n        \"close callbacks\"\n      ],\n      \"correct_answers\": [\n        \"check\"\n      ],\n      \"explanation\": \"setImmediate runs in the check phase.\"\n    },\n    {\n      \"type\": \"multi-select\",\n      \"text\": \"Which of these are readable stream events?\",\n      \"options\": [\n        \"data\",\n        \"end\",\n        \"drain\",\n        \"error\"\n      ],\n      \"correct_answers\": [\n        \"data\",\n        \"end\",\n        \"error\"\n      ],\n      \"points\": 2\n    },\n    {\n      \"type\": \"true-false\",\n      \"text\": \"process.nextTick callbacks run before promise microtasks.\",\n      \"options\": [\n        \"True\",\n        \"False\"\n      ],\n      \"correct_answers\": [\n        \"True\"\n      ]\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 201', () => pm.response.to.have.status(201));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Add questions (invalid, 400)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/contests/{{adminContestId}}/questions",
+            "description": "Validation error with the field path of each problem.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"questions\": [\n    {\n      \"type\": \"single-select\",\n      \"text\": \"Two correct answers?\",\n      \"options\": [\n        \"a\",\n        \"b\"\n      ],\n      \"correct_answers\": [\n        \"a\",\n        \"b\"\n      ]\n    },\n    {\n      \"type\": \"true-false\",\n      \"text\": \"Wrong options\",\n      \"options\": [\n        \"Yes\",\n        \"No\"\n      ],\n      \"correct_answers\": [\n        \"Yes\"\n      ]\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 400', () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Generate questions (preview, not saved)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/contests/{{adminContestId}}/questions/generate",
+            "description": "save:false returns the generated questions for review. The \"provider\" field says whether the real model (anthropic) or the mock answered.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"topic\": \"JavaScript promises\",\n  \"difficulty\": \"medium\",\n  \"count\": 3,\n  \"questionTypes\": [\n    \"single-select\",\n    \"multi-select\",\n    \"true-false\"\n  ],\n  \"save\": false\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Generate questions and save",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/contests/{{adminContestId}}/questions/generate",
+            "description": "Generated questions go through the same validation as hand-written ones; rejected ones are counted, the rest are appended to the contest.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"topic\": \"SQL joins\",\n  \"difficulty\": \"hard\",\n  \"count\": 2,\n  \"questionTypes\": [\n    \"true-false\"\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 201', () => pm.response.to.have.status(201));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get questions with answers",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/contests/{{adminContestId}}/questions",
+            "description": "Admins always see correct_answers, without joining."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('answers visible to admin', () => pm.expect(pm.response.json().questions[0].correct_answers).to.be.an('array'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Change a user's role",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/users/{{userId}}/role",
+            "description": "Promotes the normal user from this run to VIP. The user needs to log in again for the new role to be in the token.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"role\": \"vip\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Finalize the contest (409 while running)",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": "{{baseUrl}}/contests/{{adminContestId}}/finalize",
+            "description": "Finalizing picks the winner and writes the prize. It only works after end_time; the background worker does it automatically every FINALIZER_INTERVAL_MS. This contest is still running, so the API answers 409 CONTEST_NOT_ENDED."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 409', () => pm.response.to.have.status(409));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Delete the contest",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": "{{baseUrl}}/contests/{{adminContestId}}"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 204', () => pm.response.to.have.status(204));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:3000/api"
+    },
+    {
+      "key": "adminToken",
+      "value": ""
+    },
+    {
+      "key": "userToken",
+      "value": ""
+    },
+    {
+      "key": "vipToken",
+      "value": ""
+    },
+    {
+      "key": "userId",
+      "value": ""
+    },
+    {
+      "key": "vipUserId",
+      "value": ""
+    },
+    {
+      "key": "userEmail",
+      "value": ""
+    },
+    {
+      "key": "vipEmail",
+      "value": ""
+    },
+    {
+      "key": "contestId",
+      "value": ""
+    },
+    {
+      "key": "vipContestId",
+      "value": ""
+    },
+    {
+      "key": "adminContestId",
+      "value": ""
+    },
+    {
+      "key": "q1",
+      "value": ""
+    },
+    {
+      "key": "q2",
+      "value": ""
+    },
+    {
+      "key": "q3",
+      "value": ""
+    },
+    {
+      "key": "q4",
+      "value": ""
+    },
+    {
+      "key": "startTime",
+      "value": ""
+    },
+    {
+      "key": "endTime",
+      "value": ""
+    }
+  ]
+}

@@ -12,14 +12,20 @@ describe('natural-language contest search', () => {
     const ai = getAi();
     expect(ai.name).toBe('mock');
     expect(await ai.parseSearch('Show me active VIP contests')).toMatchObject({ status: 'active', accessLevel: 'vip' });
-    expect(await ai.parseSearch('Find beginner contests about Node.js')).toMatchObject({ difficulty: 'beginner', topics: ['node.js'] });
+    expect(await ai.parseSearch('Find beginner contests about Node.js')).toMatchObject({
+      difficulty: 'beginner',
+      topics: ['node.js'],
+    });
     expect(await ai.parseSearch('I want a difficult JavaScript contest starting this week')).toMatchObject({
       difficulty: 'advanced',
       topics: ['javascript'],
       status: 'upcoming',
       startsWithinDays: 7,
     });
-    expect(await ai.parseSearch('contests related to backend development with prizes')).toMatchObject({ topics: ['backend'], hasPrize: true });
+    expect(await ai.parseSearch('contests related to backend development with prizes')).toMatchObject({
+      topics: ['backend'],
+      hasPrize: true,
+    });
     expect(toContestFilters(await ai.parseSearch('find normal contests that are currently active'))).toEqual({
       status: 'active',
       access: 'normal',
@@ -32,10 +38,23 @@ describe('natural-language contest search', () => {
 
   it('searches through the api, with caching and a tag fallback', async () => {
     const admin = await createUser('admin');
-    await createContest(admin.token, { name: 'Node.js Backend Challenge', access_level: 'vip', tags: ['node.js', 'backend'] });
+    await createContest(admin.token, {
+      name: 'Node.js Backend Challenge',
+      access_level: 'vip',
+      tags: ['node.js', 'backend'],
+    });
     await createContest(admin.token, { name: 'JS for beginners', difficulty: 'beginner', tags: ['javascript'] });
-    await createContest(admin.token, { name: 'Old Node', tags: ['node.js'], start_time: new Date(Date.now() - 3 * hour), end_time: new Date(Date.now() - hour) });
-    await createContest(admin.token, { name: 'Python with no tags', tags: [], description: 'All about python scripting' });
+    await createContest(admin.token, {
+      name: 'Old Node',
+      tags: ['node.js'],
+      start_time: new Date(Date.now() - 3 * hour),
+      end_time: new Date(Date.now() - hour),
+    });
+    await createContest(admin.token, {
+      name: 'Python with no tags',
+      tags: [],
+      description: 'All about python scripting',
+    });
 
     const search = (q: string) => api().get('/api/contests/search').query({ q });
 
@@ -63,7 +82,14 @@ describe('natural-language contest search', () => {
     const user = await createUser('user');
     const statuses = [];
     for (let i = 0; i < 6; i++) {
-      statuses.push((await api().get('/api/contests/search').query({ q: `query number ${i}` }).set(auth(user.token))).status);
+      statuses.push(
+        (
+          await api()
+            .get('/api/contests/search')
+            .query({ q: `query number ${i}` })
+            .set(auth(user.token))
+        ).status,
+      );
     }
     // RATE_LIMIT_AI_MAX=5 in .env.test
     expect(statuses).toEqual([200, 200, 200, 200, 200, 429]);
@@ -75,23 +101,54 @@ describe('ai question generation', () => {
     const admin = await createUser('admin');
     const vip = await createUser('vip');
     const contest = await createContest(admin.token);
-    const body = { topic: 'JavaScript', difficulty: 'medium', count: 5, questionTypes: ['single-select', 'multi-select', 'true-false'] };
+    const body = {
+      topic: 'JavaScript',
+      difficulty: 'medium',
+      count: 5,
+      questionTypes: ['single-select', 'multi-select', 'true-false'],
+    };
 
-    expect((await api().post(`/api/contests/${contest.id}/questions/generate`).set(auth(vip.token)).send(body)).status).toBe(403);
+    expect(
+      (await api().post(`/api/contests/${contest.id}/questions/generate`).set(auth(vip.token)).send(body)).status,
+    ).toBe(403);
 
-    const preview = await api().post(`/api/contests/${contest.id}/questions/generate`).set(auth(admin.token)).send({ ...body, save: false });
+    const preview = await api()
+      .post(`/api/contests/${contest.id}/questions/generate`)
+      .set(auth(admin.token))
+      .send({ ...body, save: false });
     expect(preview.status).toBe(200);
     expect(preview.body).toMatchObject({ provider: 'mock', requested: 5, generated: 5, rejected: 0, saved: false });
-    expect(preview.body.questions.map((q: { type: string }) => q.type)).toEqual(['single-select', 'multi-select', 'true-false', 'single-select', 'multi-select']);
-    expect(await api().get(`/api/contests/${contest.id}/questions`).set(auth(admin.token)).then((r) => r.body.questions)).toHaveLength(0);
+    expect(preview.body.questions.map((q: { type: string }) => q.type)).toEqual([
+      'single-select',
+      'multi-select',
+      'true-false',
+      'single-select',
+      'multi-select',
+    ]);
+    expect(
+      await api()
+        .get(`/api/contests/${contest.id}/questions`)
+        .set(auth(admin.token))
+        .then((r) => r.body.questions),
+    ).toHaveLength(0);
 
-    const saved = await api().post(`/api/contests/${contest.id}/questions/generate`).set(auth(admin.token)).send({ ...body, count: 2 });
+    const saved = await api()
+      .post(`/api/contests/${contest.id}/questions/generate`)
+      .set(auth(admin.token))
+      .send({ ...body, count: 2 });
     expect(saved.status).toBe(201);
     expect(saved.body.questions).toHaveLength(2);
     expect(saved.body.questions[0]).toMatchObject({ contest_id: contest.id, position: 1, type: 'single-select' });
-    expect(saved.body.questions[1]).toMatchObject({ position: 2, type: 'multi-select', correct_answers: ['Option A', 'Option C'] });
+    expect(saved.body.questions[1]).toMatchObject({ position: 2, type: 'multi-select' });
+    // bank questions are real content, so only check the shape: several answers, all of them options
+    const multi = saved.body.questions[1];
+    expect(multi.correct_answers.length).toBeGreaterThanOrEqual(2);
+    for (const answer of multi.correct_answers) expect(multi.options).toContain(answer);
 
-    const tooMany = await api().post(`/api/contests/${contest.id}/questions/generate`).set(auth(admin.token)).send({ ...body, count: 50 });
+    const tooMany = await api()
+      .post(`/api/contests/${contest.id}/questions/generate`)
+      .set(auth(admin.token))
+      .send({ ...body, count: 50 });
     expect(tooMany.status).toBe(400);
   });
 });

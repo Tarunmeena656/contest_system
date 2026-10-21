@@ -81,7 +81,9 @@ export function applyFilters(query: Knex.QueryBuilder, f: ContestFilters, now = 
   }
   if (f.tags?.length) {
     // case-insensitive overlap: any of the wanted tags present on the contest
-    query.whereRaw('exists (select 1 from unnest(tags) t where lower(t) = any(?))', [f.tags.map((t) => t.toLowerCase())]);
+    query.whereRaw('exists (select 1 from unnest(tags) t where lower(t) = any(?))', [
+      f.tags.map((t) => t.toLowerCase()),
+    ]);
   }
   if (f.q) {
     query.whereRaw(`search_vector @@ plainto_tsquery('english', ?)`, [f.q]);

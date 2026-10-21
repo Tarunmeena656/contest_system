@@ -11,7 +11,9 @@
     "migrate": "knex migrate:latest",
     "migrate:rollback": "knex migrate:rollback",
     "seed": "knex seed:run",
-    "db:reset": "knex migrate:rollback --all && knex migrate:latest && knex seed:run"
+    "db:reset": "knex migrate:rollback --all && knex migrate:latest && knex seed:run",
+    "format": "prettier --write .",
+    "format:check": "prettier --check ."
   },
   "keywords": [],
   "author": "",
@@ -38,6 +40,7 @@
     "@types/pg": "^8.23.1",
     "@types/supertest": "^7.2.1",
     "pino-pretty": "^13.2.0",
+    "prettier": "^3.9.10",
     "supertest": "^7.3.1",
     "tsx": "^4.23.15",
     "typescript": "^7.0.2",

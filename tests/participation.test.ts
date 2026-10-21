@@ -23,7 +23,10 @@ describe('joining', () => {
     const user = await createUser('user');
     const vip = await createUser('vip');
     const vipOnly = await createContest(admin.token, { access_level: 'vip' });
-    const upcoming = await createContest(admin.token, { start_time: new Date(Date.now() + hour), end_time: new Date(Date.now() + 2 * hour) });
+    const upcoming = await createContest(admin.token, {
+      start_time: new Date(Date.now() + hour),
+      end_time: new Date(Date.now() + 2 * hour),
+    });
 
     expect((await api().post(`/api/contests/${vipOnly.id}/join`)).status).toBe(401);
     const denied = await api().post(`/api/contests/${vipOnly.id}/join`).set(auth(user.token));
@@ -41,7 +44,9 @@ describe('joining', () => {
     const user = await createUser('user');
     const contest = await createContest(admin.token);
 
-    const results = await Promise.all(Array.from({ length: 6 }, () => api().post(`/api/contests/${contest.id}/join`).set(auth(user.token))));
+    const results = await Promise.all(
+      Array.from({ length: 6 }, () => api().post(`/api/contests/${contest.id}/join`).set(auth(user.token))),
+    );
     const statuses = results.map((r) => r.status).sort();
     expect(statuses.filter((s) => s === 201)).toHaveLength(1);
     expect(statuses.filter((s) => s === 200)).toHaveLength(5);
@@ -98,16 +103,31 @@ describe('submitting and scoring', () => {
     const contest = await createContest(admin.token);
     const questions = await addQuestions(admin.token, contest.id);
 
-    const notJoined = await api().post(`/api/contests/${contest.id}/submit`).set(auth(user.token)).send({ answers: [] });
+    const notJoined = await api()
+      .post(`/api/contests/${contest.id}/submit`)
+      .set(auth(user.token))
+      .send({ answers: [] });
     expect(notJoined.body.error.code).toBe('NOT_JOINED');
 
     await joined(user.token, contest.id);
-    const submit = (answers: unknown) => api().post(`/api/contests/${contest.id}/submit`).set(auth(user.token)).send({ answers });
+    const submit = (answers: unknown) =>
+      api().post(`/api/contests/${contest.id}/submit`).set(auth(user.token)).send({ answers });
 
     expect((await submit([{ questionId: questions[0].id, selected: ['7'] }])).body.error.code).toBe('INVALID_OPTION');
-    expect((await submit([{ questionId: questions[0].id, selected: ['3', '4'] }])).body.error.code).toBe('INVALID_OPTION');
-    expect((await submit([{ questionId: '00000000-0000-0000-0000-000000000000', selected: ['4'] }])).body.error.code).toBe('UNKNOWN_QUESTION');
-    expect((await submit([{ questionId: questions[0].id, selected: ['4'] }, { questionId: questions[0].id, selected: ['4'] }])).body.error.code).toBe('DUPLICATE_ANSWER');
+    expect((await submit([{ questionId: questions[0].id, selected: ['3', '4'] }])).body.error.code).toBe(
+      'INVALID_OPTION',
+    );
+    expect(
+      (await submit([{ questionId: '00000000-0000-0000-0000-000000000000', selected: ['4'] }])).body.error.code,
+    ).toBe('UNKNOWN_QUESTION');
+    expect(
+      (
+        await submit([
+          { questionId: questions[0].id, selected: ['4'] },
+          { questionId: questions[0].id, selected: ['4'] },
+        ])
+      ).body.error.code,
+    ).toBe('DUPLICATE_ANSWER');
 
     // unanswered questions just score zero
     const partial = await submit([{ questionId: questions[0].id, selected: ['4'] }]);
@@ -135,7 +155,10 @@ describe('submitting and scoring', () => {
 
     const results = await Promise.all(
       Array.from({ length: 5 }, () =>
-        api().post(`/api/contests/${contest.id}/submit`).set(auth(user.token)).send({ answers: answersFor(questions, [['4'], ['2', '4'], ['True']]) }),
+        api()
+          .post(`/api/contests/${contest.id}/submit`)
+          .set(auth(user.token))
+          .send({ answers: answersFor(questions, [['4'], ['2', '4'], ['True']]) }),
       ),
     );
     expect(results.filter((r) => r.status === 200)).toHaveLength(1);
@@ -145,9 +168,17 @@ describe('submitting and scoring', () => {
 });
 
 describe('leaderboard, prizes and history', () => {
-  async function play(token: string, contestId: string, questions: { id: string; type: string; options: string[] }[], picks: string[][]) {
+  async function play(
+    token: string,
+    contestId: string,
+    questions: { id: string; type: string; options: string[] }[],
+    picks: string[][],
+  ) {
     await joined(token, contestId);
-    return api().post(`/api/contests/${contestId}/submit`).set(auth(token)).send({ answers: answersFor(questions, picks) });
+    return api()
+      .post(`/api/contests/${contestId}/submit`)
+      .set(auth(token))
+      .send({ answers: answersFor(questions, picks) });
   }
 
   it('ranks by score then by earlier submission, and awards the prize once', async () => {
@@ -161,7 +192,11 @@ describe('leaderboard, prizes and history', () => {
     await play(c.token, contest.id, questions, [['4'], ['2', '4'], ['True']]); // 4 points, second
 
     const board = await api().get(`/api/contests/${contest.id}/leaderboard`).set(auth(c.token));
-    expect(board.body.items.map((r: { user_id: string; rank: number }) => [r.user_id, r.rank])).toEqual([[b.id, 1], [c.id, 2], [a.id, 3]]);
+    expect(board.body.items.map((r: { user_id: string; rank: number }) => [r.user_id, r.rank])).toEqual([
+      [b.id, 1],
+      [c.id, 2],
+      [a.id, 3],
+    ]);
     expect(board.body.me).toMatchObject({ user_id: c.id, rank: 2 });
     expect(board.body.total).toBe(3);
 
@@ -181,12 +216,24 @@ describe('leaderboard, prizes and history', () => {
     expect((await api().get('/api/me/prizes').set(auth(c.token))).body.items).toHaveLength(0);
 
     const history = await api().get('/api/me/history').set(auth(b.token));
-    expect(history.body.items[0]).toMatchObject({ contest_id: contest.id, score: 4, rank: 1, won: true, status: 'ended' });
+    expect(history.body.items[0]).toMatchObject({
+      contest_id: contest.id,
+      score: 4,
+      rank: 1,
+      won: true,
+      status: 'ended',
+    });
     const historyC = await api().get('/api/me/history').set(auth(c.token));
     expect(historyC.body.items[0]).toMatchObject({ rank: 2, won: false });
 
     const overall = await api().get('/api/leaderboard').set(auth(a.token));
-    expect(overall.body.items[0]).toMatchObject({ user_id: b.id, total_score: 4, contests_played: 1, prizes_won: 1, rank: 1 });
+    expect(overall.body.items[0]).toMatchObject({
+      user_id: b.id,
+      total_score: 4,
+      contests_played: 1,
+      prizes_won: 1,
+      rank: 1,
+    });
     expect(overall.body.me).toMatchObject({ user_id: a.id, rank: 3 });
   });
 
@@ -200,7 +247,10 @@ describe('leaderboard, prizes and history', () => {
     await endContest(ending.id);
 
     const res = await api().get('/api/me/in-progress').set(auth(user.token));
-    expect(res.body.items.map((i: { name: string; missed: boolean }) => [i.name, i.missed])).toEqual([['Will end', true], ['Still going', false]]);
+    expect(res.body.items.map((i: { name: string; missed: boolean }) => [i.name, i.missed])).toEqual([
+      ['Will end', true],
+      ['Still going', false],
+    ]);
     expect((await api().get('/api/me/history').set(auth(user.token))).body.items).toHaveLength(0);
   });
 

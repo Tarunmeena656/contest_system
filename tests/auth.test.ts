@@ -6,12 +6,16 @@ beforeEach(resetDb);
 
 describe('auth and roles', () => {
   it('registers a normal user and logs in', async () => {
-    const reg = await api().post('/api/auth/register').send({ name: 'Asha', email: 'Asha@Example.com', password: 'password123' });
+    const reg = await api()
+      .post('/api/auth/register')
+      .send({ name: 'Asha', email: 'Asha@Example.com', password: 'password123' });
     expect(reg.status).toBe(201);
     expect(reg.body.user).toMatchObject({ name: 'Asha', email: 'asha@example.com', role: 'user' });
     expect(reg.body.user.password_hash).toBeUndefined();
 
-    const dup = await api().post('/api/auth/register').send({ name: 'Asha', email: 'asha@example.com', password: 'password123' });
+    const dup = await api()
+      .post('/api/auth/register')
+      .send({ name: 'Asha', email: 'asha@example.com', password: 'password123' });
     expect(dup.status).toBe(409);
     expect(dup.body.error.code).toBe('EMAIL_TAKEN');
 
@@ -59,7 +63,10 @@ describe('auth and roles', () => {
     expect(promoted.status).toBe(200);
     expect(promoted.body.role).toBe('vip');
 
-    const missing = await api().patch(`/api/users/00000000-0000-0000-0000-000000000000/role`).set(auth(admin.token)).send({ role: 'vip' });
+    const missing = await api()
+      .patch(`/api/users/00000000-0000-0000-0000-000000000000/role`)
+      .set(auth(admin.token))
+      .send({ role: 'vip' });
     expect(missing.status).toBe(404);
   });
 

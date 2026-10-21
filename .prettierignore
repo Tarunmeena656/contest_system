@@ -1,0 +1,7 @@
+node_modules
+dist
+coverage
+docs/schema.sql
+postman
+package-lock.json
+*.md

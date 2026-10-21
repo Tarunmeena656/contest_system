@@ -13,7 +13,12 @@ exports.seed = async function (knex) {
     .insert([
       { name: 'Admin', email: 'admin@contest.dev', password_hash: await bcrypt.hash('Admin123!', 10), role: 'admin' },
       { name: 'Vera VIP', email: 'vip@contest.dev', password_hash: await bcrypt.hash('Vip12345!', 10), role: 'vip' },
-      { name: 'Normal Nick', email: 'user@contest.dev', password_hash: await bcrypt.hash('User1234!', 10), role: 'user' },
+      {
+        name: 'Normal Nick',
+        email: 'user@contest.dev',
+        password_hash: await bcrypt.hash('User1234!', 10),
+        role: 'user',
+      },
     ])
     .returning('*');
 
@@ -78,14 +83,78 @@ exports.seed = async function (knex) {
   });
 
   await knex('questions').insert([
-    q(js.id, 1, 'single-select', 'What does typeof null return?', ['"null"', '"object"', '"undefined"', '"number"'], ['"object"'], 'A long-standing quirk of the language.'),
-    q(js.id, 2, 'multi-select', 'Which of these are primitive types?', ['String', 'Number', 'Array', 'Symbol'], ['String', 'Number', 'Symbol'], 'Array is an object.'),
-    q(js.id, 3, 'true-false', 'const prevents reassignment but not mutation of objects.', ['True', 'False'], ['True'], 'const binds the name, not the value.'),
-    q(js.id, 4, 'single-select', 'Which method adds an element to the end of an array?', ['push', 'pop', 'shift', 'unshift'], ['push'], null),
-    q(node.id, 1, 'single-select', 'Which phase of the event loop runs setImmediate callbacks?', ['timers', 'poll', 'check', 'close callbacks'], ['check'], null),
-    q(node.id, 2, 'multi-select', 'Which of these are readable stream events?', ['data', 'end', 'drain', 'error'], ['data', 'end', 'error'], 'drain is emitted by writable streams.'),
-    q(node.id, 3, 'true-false', 'process.nextTick callbacks run before promise microtasks.', ['True', 'False'], ['True'], null),
-    q(sql.id, 1, 'single-select', 'Which window function gives the same rank to ties and leaves gaps?', ['row_number', 'rank', 'dense_rank', 'ntile'], ['rank'], null),
+    q(
+      js.id,
+      1,
+      'single-select',
+      'What does typeof null return?',
+      ['"null"', '"object"', '"undefined"', '"number"'],
+      ['"object"'],
+      'A long-standing quirk of the language.',
+    ),
+    q(
+      js.id,
+      2,
+      'multi-select',
+      'Which of these are primitive types?',
+      ['String', 'Number', 'Array', 'Symbol'],
+      ['String', 'Number', 'Symbol'],
+      'Array is an object.',
+    ),
+    q(
+      js.id,
+      3,
+      'true-false',
+      'const prevents reassignment but not mutation of objects.',
+      ['True', 'False'],
+      ['True'],
+      'const binds the name, not the value.',
+    ),
+    q(
+      js.id,
+      4,
+      'single-select',
+      'Which method adds an element to the end of an array?',
+      ['push', 'pop', 'shift', 'unshift'],
+      ['push'],
+      null,
+    ),
+    q(
+      node.id,
+      1,
+      'single-select',
+      'Which phase of the event loop runs setImmediate callbacks?',
+      ['timers', 'poll', 'check', 'close callbacks'],
+      ['check'],
+      null,
+    ),
+    q(
+      node.id,
+      2,
+      'multi-select',
+      'Which of these are readable stream events?',
+      ['data', 'end', 'drain', 'error'],
+      ['data', 'end', 'error'],
+      'drain is emitted by writable streams.',
+    ),
+    q(
+      node.id,
+      3,
+      'true-false',
+      'process.nextTick callbacks run before promise microtasks.',
+      ['True', 'False'],
+      ['True'],
+      null,
+    ),
+    q(
+      sql.id,
+      1,
+      'single-select',
+      'Which window function gives the same rank to ties and leaves gaps?',
+      ['row_number', 'rank', 'dense_rank', 'ntile'],
+      ['rank'],
+      null,
+    ),
   ]);
 
   // the vip already played the javascript contest, the normal user joined but has not submitted

@@ -53,7 +53,13 @@ export class AnthropicProvider implements AiProvider {
     return this.structured('parseSearch', SEARCH_SYSTEM, `Request: ${query}`, searchFiltersSchema, 1000);
   }
 
-  private async structured<T>(op: string, system: string, prompt: string, schema: ZodType<T>, maxTokens: number): Promise<T> {
+  private async structured<T>(
+    op: string,
+    system: string,
+    prompt: string,
+    schema: ZodType<T>,
+    maxTokens: number,
+  ): Promise<T> {
     const started = Date.now();
     try {
       const response = await this.client.messages.parse({

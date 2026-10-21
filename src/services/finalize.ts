@@ -22,7 +22,10 @@ export async function finalizeContest(contestId: string) {
     const winner = await trx('participations')
       .where({ contest_id: contestId })
       .whereNotNull('submitted_at')
-      .orderBy([{ column: 'score', order: 'desc' }, { column: 'submitted_at', order: 'asc' }])
+      .orderBy([
+        { column: 'score', order: 'desc' },
+        { column: 'submitted_at', order: 'asc' },
+      ])
       .first();
 
     if (winner) {
@@ -42,7 +45,8 @@ export async function finalizeContest(contestId: string) {
 export async function finalizeDueContests() {
   // one worker at a time across all instances; the lock is released when the tx ends
   const due = await db.transaction(async (trx) => {
-    const [{ locked }] = (await trx.raw(`select pg_try_advisory_xact_lock(hashtext('contest-finalizer')) as locked`)).rows;
+    const [{ locked }] = (await trx.raw(`select pg_try_advisory_xact_lock(hashtext('contest-finalizer')) as locked`))
+      .rows;
     if (!locked) {
       return [];
     }

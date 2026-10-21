@@ -7,7 +7,10 @@ export const generateParamsSchema = z.object({
   topic: z.string().trim().min(2).max(100),
   difficulty: z.enum(['easy', 'medium', 'hard', ...difficulties]).default('intermediate'),
   count: z.number().int().min(1).max(20).default(5),
-  questionTypes: z.array(z.enum(questionTypes)).min(1).default([...questionTypes]),
+  questionTypes: z
+    .array(z.enum(questionTypes))
+    .min(1)
+    .default([...questionTypes]),
   save: z.boolean().default(true),
 });
 export type GenerateParams = z.infer<typeof generateParamsSchema>;

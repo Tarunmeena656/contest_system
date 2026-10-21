@@ -25,7 +25,7 @@ interface AiProvider {
 Two implementations:
 
 - `AnthropicProvider` (`src/ai/anthropic.ts`): Claude through the official `@anthropic-ai/sdk`. Model from `AI_MODEL`, default `claude-opus-5-5`.
-- `MockProvider` (`src/ai/mock.ts`): deterministic. Keyword rules for search, templated questions for generation. Used by the tests and automatically whenever `ANTHROPIC_API_KEY` is not set, so the whole API works offline.
+- `MockProvider` (`src/ai/mock.ts`): deterministic. Keyword rules for search. For generation it draws from a hand-written bank of real questions (`src/ai/questionBank.ts`) covering JavaScript, Node.js, TypeScript, SQL and Python, picked by the requested question types with the requested difficulty first. Topics outside the bank get general programming questions, and once a bank runs dry the remaining slots are filled with placeholders whose explanation says exactly that. Used by the tests and automatically whenever `ANTHROPIC_API_KEY` is not set, so the whole API works offline.
 
 Switching providers is one env var. Adding another vendor means implementing the two methods.
 

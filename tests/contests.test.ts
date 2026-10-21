@@ -10,28 +10,55 @@ describe('contests', () => {
     const admin = await createUser('admin');
     const vip = await createUser('vip');
 
-    const denied = await api().post('/api/contests').set(auth(vip.token)).send({ name: 'Nope', start_time: new Date(), end_time: new Date(Date.now() + hour) });
+    const denied = await api()
+      .post('/api/contests')
+      .set(auth(vip.token))
+      .send({ name: 'Nope', start_time: new Date(), end_time: new Date(Date.now() + hour) });
     expect(denied.status).toBe(403);
 
-    const bad = await api().post('/api/contests').set(auth(admin.token)).send({ name: 'Backwards', start_time: new Date(), end_time: new Date(Date.now() - hour) });
+    const bad = await api()
+      .post('/api/contests')
+      .set(auth(admin.token))
+      .send({ name: 'Backwards', start_time: new Date(), end_time: new Date(Date.now() - hour) });
     expect(bad.status).toBe(400);
     expect(bad.body.error.details[0].field).toBe('end_time');
 
     const contest = await createContest(admin.token, { name: 'Node.js Deep Dive', tags: ['Node.js', 'backend'] });
-    expect(contest).toMatchObject({ access_level: 'normal', difficulty: 'intermediate', tags: ['node.js', 'backend'], status: 'active' });
+    expect(contest).toMatchObject({
+      access_level: 'normal',
+      difficulty: 'intermediate',
+      tags: ['node.js', 'backend'],
+      status: 'active',
+    });
 
-    const patched = await api().patch(`/api/contests/${contest.id}`).set(auth(admin.token)).send({ access_level: 'vip' });
+    const patched = await api()
+      .patch(`/api/contests/${contest.id}`)
+      .set(auth(admin.token))
+      .send({ access_level: 'vip' });
     expect(patched.status).toBe(200);
     // only the named field changes, the rest keeps its value (no create-time defaults sneaking in)
-    expect(patched.body).toMatchObject({ access_level: 'vip', prize: 'A sticker', tags: ['node.js', 'backend'], difficulty: 'intermediate' });
+    expect(patched.body).toMatchObject({
+      access_level: 'vip',
+      prize: 'A sticker',
+      tags: ['node.js', 'backend'],
+      difficulty: 'intermediate',
+    });
     const cleared = await api().patch(`/api/contests/${contest.id}`).set(auth(admin.token)).send({ prize: null });
     expect(cleared.body.prize).toBeNull();
-    const badPatch = await api().patch(`/api/contests/${contest.id}`).set(auth(admin.token)).send({ end_time: new Date(Date.now() - 5 * hour) });
+    const badPatch = await api()
+      .patch(`/api/contests/${contest.id}`)
+      .set(auth(admin.token))
+      .send({ end_time: new Date(Date.now() - 5 * hour) });
     expect(badPatch.status).toBe(400);
 
     const detail = await api().get(`/api/contests/${contest.id}`);
     expect(detail.status).toBe(200);
-    expect(detail.body).toMatchObject({ can_participate: false, question_count: 0, participant_count: 0, my_participation: null });
+    expect(detail.body).toMatchObject({
+      can_participate: false,
+      question_count: 0,
+      participant_count: 0,
+      my_participation: null,
+    });
 
     expect((await api().delete(`/api/contests/${contest.id}`).set(auth(vip.token))).status).toBe(403);
     expect((await api().delete(`/api/contests/${contest.id}`).set(auth(admin.token))).status).toBe(204);
@@ -41,11 +68,28 @@ describe('contests', () => {
   it('lists with status, access, tag and full-text filters', async () => {
     const admin = await createUser('admin');
     await createContest(admin.token, { name: 'Active JS', tags: ['javascript'] });
-    await createContest(admin.token, { name: 'VIP Node', access_level: 'vip', tags: ['node.js'], difficulty: 'advanced' });
-    await createContest(admin.token, { name: 'Soon SQL', tags: ['sql'], start_time: new Date(Date.now() + hour), end_time: new Date(Date.now() + 2 * hour) });
-    await createContest(admin.token, { name: 'Old Python', tags: ['python'], start_time: new Date(Date.now() - 3 * hour), end_time: new Date(Date.now() - hour), prize: null });
+    await createContest(admin.token, {
+      name: 'VIP Node',
+      access_level: 'vip',
+      tags: ['node.js'],
+      difficulty: 'advanced',
+    });
+    await createContest(admin.token, {
+      name: 'Soon SQL',
+      tags: ['sql'],
+      start_time: new Date(Date.now() + hour),
+      end_time: new Date(Date.now() + 2 * hour),
+    });
+    await createContest(admin.token, {
+      name: 'Old Python',
+      tags: ['python'],
+      start_time: new Date(Date.now() - 3 * hour),
+      end_time: new Date(Date.now() - hour),
+      prize: null,
+    });
 
-    const names = async (query: string) => (await api().get(`/api/contests?${query}`)).body.items.map((c: { name: string }) => c.name);
+    const names = async (query: string) =>
+      (await api().get(`/api/contests?${query}`)).body.items.map((c: { name: string }) => c.name);
     expect(await names('')).toHaveLength(4);
     expect((await names('status=active')).sort()).toEqual(['Active JS', 'VIP Node']);
     expect(await names('status=upcoming')).toEqual(['Soon SQL']);
@@ -80,7 +124,8 @@ describe('contests', () => {
   it('validates questions per type', async () => {
     const admin = await createUser('admin');
     const contest = await createContest(admin.token);
-    const post = (questions: unknown[]) => api().post(`/api/contests/${contest.id}/questions`).set(auth(admin.token)).send({ questions });
+    const post = (questions: unknown[]) =>
+      api().post(`/api/contests/${contest.id}/questions`).set(auth(admin.token)).send({ questions });
 
     const res = await post([
       { type: 'single-select', text: 'Two correct?', options: ['a', 'b'], correct_answers: ['a', 'b'] },
@@ -97,7 +142,9 @@ describe('contests', () => {
 
     const questions = await addQuestions(admin.token, contest.id);
     expect(questions.map((q) => q.type)).toEqual(['single-select', 'multi-select', 'true-false']);
-    const more = await addQuestions(admin.token, contest.id, [{ type: 'single-select', text: 'Fifth one?', options: ['x', 'y'], correct_answers: ['x'] }]);
+    const more = await addQuestions(admin.token, contest.id, [
+      { type: 'single-select', text: 'Fifth one?', options: ['x', 'y'], correct_answers: ['x'] },
+    ]);
     expect((more[0] as { position: number }).position).toBe(4);
   });
 });

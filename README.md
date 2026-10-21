@@ -19,7 +19,7 @@ npm run seed                    # 3 users, 4 contests, questions
 npm run dev                     # http://localhost:3000
 ```
 
-Without an `ANTHROPIC_API_KEY` the AI features run on a deterministic mock provider, so everything still works offline (`AI_PROVIDER=mock`).
+Without an `ANTHROPIC_API_KEY` the AI features run on a deterministic mock provider, so everything still works offline (`AI_PROVIDER=mock`). The mock answers searches with keyword rules and generates questions from a small built-in bank for JavaScript, Node.js, TypeScript, SQL and Python; other topics get general programming questions. Responses carry `provider: "mock"` so nobody mistakes them for model output.
 
 Seeded logins (password after the slash):
 
@@ -209,7 +209,12 @@ Generated questions go through the same validation as hand-written ones; anythin
 
 ## Postman
 
-Import `postman/contest-system.postman_collection.json` and `postman/local.postman_environment.json`. Run the folders top to bottom: the login requests store tokens in the environment, "Create contest" stores `contestId`, "Get questions" stores the question ids used by "Submit answers".
+Two collections, pick whichever reads better:
+
+- `postman/contest-system.postman_collection.json` is grouped by feature. Import it with `postman/local.postman_environment.json` and run the folders top to bottom: the login requests store tokens in the environment, "Create contest" stores `contestId`, "Get questions" stores the question ids used by "Submit answers".
+- `postman/by-role.postman_collection.json` is grouped by role: one folder each for guest, normal user, VIP and admin, with the refused actions included (a user joining a VIP contest, a VIP adding questions, and so on). It needs no environment; folder 0 signs in as every role and stores the tokens as collection variables. Every request has a status assertion, so it also runs green in the Collection Runner or `newman run postman/by-role.postman_collection.json`.
+
+Both need the seed data (`npm run seed`).
 
 ## Database
 
@@ -219,15 +224,21 @@ Schema lives in `migrations/` (knex) and a plain SQL dump is in `docs/schema.sql
 
 ```
 src/
-  app.ts              express app: logging, rate limits, routes, error handler
+  app.ts              express app: logging, rate limits, error handler
   server.ts           http server + finalizer worker + graceful shutdown
   config.ts           env parsing
-  middleware/         auth (jwt, roles), validate (zod), errors, rateLimit
-  routes/             auth, contests (+questions, join, submit, leaderboard), search, me, leaderboard
-  services/           contests (status, access rules, filters), scoring, finalize, search
-  ai/                 provider interface, anthropic + mock implementations, schemas
+  routes/             one router per resource: middleware + schema + controller per endpoint; index.ts mounts them under /api
+  controllers/        request handlers: auth, users, contests, questions, participation, leaderboard, me, search
+  schemas/            zod request schemas (body, query, params) used by the validate middleware
+  services/           business logic and queries: contests (status, access rules, filters), questions, scoring, finalize, search
+  middleware/         auth (jwt, roles), validate (zod), errors, rateLimit, asyncHandler
+  ai/                 provider interface, anthropic + mock implementations, output schemas
 migrations/ seeds/    knex
 tests/                vitest + supertest against a real postgres
-postman/              collection + environment
+postman/              collections (by feature, by role) + environment
 docs/schema.sql       pg_dump of the schema
 ```
+
+A request goes router → `validate(schema)` → controller → service. Controllers are plain async functions wrapped by `asyncHandler`, so a thrown `AppError` (or anything else) lands in the error handler without try/catch in every handler.
+
+Formatting is prettier (`npm run format`, `npm run format:check`); settings in `.prettierrc` and `.editorconfig`.
