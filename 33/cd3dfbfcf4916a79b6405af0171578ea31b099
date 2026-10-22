@@ -1,0 +1,13 @@
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "autter_version": "1.7.5",
+  "base_commit_sha": "33cd3dfbfcf4916a79b6405af0171578ea31b099",
+  "branch": "main",
+  "prompts": {},
+  "humans": {
+    "h_b3531af9243713": {
+      "author": "Tarun meena <tarun.meena@rootlex.com>"
+    }
+  }
+}
