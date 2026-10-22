@@ -11,10 +11,10 @@ exports.seed = async function (knex) {
 
   const [admin, vip, user] = await knex('users')
     .insert([
-      { name: 'Admin', email: 'admin@contest.dev', password_hash: await bcrypt.hash('Admin123!', 10), role: 'admin' },
-      { name: 'Vera VIP', email: 'vip@contest.dev', password_hash: await bcrypt.hash('Vip12345!', 10), role: 'vip' },
+      { name: 'Aditi Rao', email: 'admin@contest.dev', password_hash: await bcrypt.hash('Admin123!', 10), role: 'admin' },
+      { name: 'Vikram Mehta', email: 'vip@contest.dev', password_hash: await bcrypt.hash('Vip12345!', 10), role: 'vip' },
       {
-        name: 'Normal Nick',
+        name: 'Neha Singh',
         email: 'user@contest.dev',
         password_hash: await bcrypt.hash('User1234!', 10),
         role: 'user',

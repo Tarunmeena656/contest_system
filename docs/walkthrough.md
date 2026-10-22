@@ -2028,7 +2028,7 @@ Response `200 OK`:
     },
     {
       "user_id": "d2320268-9f1c-4d76-8816-bd1e071985e7",
-      "name": "Vera VIP",
+      "name": "Vikram Mehta",
       "total_score": 6,
       "contests_played": 2,
       "prizes_won": 0,
