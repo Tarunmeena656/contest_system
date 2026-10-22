@@ -220,6 +220,11 @@ await rec(
   call('PATCH', `/users/${vipReg.json.user.id}/role`, { as: 'user', token: user, body: { role: 'admin' } }),
   '`403 FORBIDDEN`. The role check happens before validation, so the body is never even looked at.',
 );
+await rec(
+  'Admin lists users',
+  call('GET', '/users?q=walk&pageSize=5', { as: 'admin', token: admin }),
+  'Admin only. `q` matches name or email, newest accounts first. The frontend uses this to find the account whose role to change.',
+);
 const vipLogin = await rec(
   'The promoted user logs in again',
   call('POST', '/auth/login', { body: { email: vipEmail, password: 'password123' } }),

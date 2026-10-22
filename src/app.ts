@@ -1,6 +1,8 @@
 import { randomUUID } from 'node:crypto';
+import path from 'node:path';
 import express from 'express';
 import pinoHttp from 'pino-http';
+import { config } from './config';
 import { logger } from './logger';
 import { errorHandler, notFound } from './middleware/errors';
 import { generalLimiter } from './middleware/rateLimit';
@@ -23,6 +25,14 @@ app.use(express.json({ limit: '200kb' }));
 app.use(generalLimiter);
 
 app.use('/api', api);
+
+// production: the built frontend is served from here and any non-api path gets index.html
+if (config.staticDir) {
+  app.use(express.static(config.staticDir));
+  app.get(/^(?!\/api(\/|$)).*/, (req, res) => {
+    res.sendFile(path.join(config.staticDir, 'index.html'));
+  });
+}
 
 app.use(notFound);
 app.use(errorHandler);

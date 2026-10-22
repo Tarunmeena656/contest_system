@@ -46,6 +46,7 @@ Requirement from the brief, and where it lives:
 | pino + pino-http | logging | JSON logs with a request id on every line; fast; pretty-printed only in development |
 | express-rate-limit 8 | rate limiting | three limiters with different keys and windows; standard `RateLimit` headers |
 | @anthropic-ai/sdk | AI provider | structured output (`messages.parse` with a zod schema) so the model returns JSON that already matches the schema; typed errors for clean mapping |
+| React 19 + Vite + TypeScript | frontend (`frontend/`) | a small single-page app over the API: browse and search, join, answer, results, leaderboards, my contests, admin tools. Served by the API itself in production (`STATIC_DIR`), so one origin and no CORS |
 | vitest + supertest | tests | 22 tests run the real Express app against a real PostgreSQL database, no mocks for the database |
 | prettier | formatting | one style, enforced with `npm run format:check` |
 
@@ -81,6 +82,8 @@ src/
 migrations/ seeds/  knex
 tests/              vitest + supertest
 postman/            collections (by feature, by role) + environment
+frontend/           React + Vite UI, built to frontend/dist
+render.yaml         Render blueprint: one web service (api + ui) and a free PostgreSQL
 scripts/            record-api.mjs (generates the second half of this file)
 ```
 
@@ -261,61 +264,62 @@ Recorded on 2026-10-22 against `http://localhost:3100/api` with `AI_PROVIDER=moc
 | 7 | `GET /auth/me` (user) | 200 |
 | 8 | `GET /me/history` | 401 |
 | 9 | `GET /me/history` (garbage token) | 401 |
-| 10 | `PATCH /users/9d8e2be3-a1f2-4ab7-9c3a-0e03d8280be4/role` (admin) | 200 |
-| 11 | `PATCH /users/9d8e2be3-a1f2-4ab7-9c3a-0e03d8280be4/role` (user) | 403 |
-| 12 | `POST /auth/login` | 200 |
-| 13 | `GET /contests` | 200 |
-| 14 | `GET /contests?status=active&access=vip` | 200 |
-| 15 | `GET /contests?tag=sql` | 200 |
-| 16 | `GET /contests?q=streams` | 200 |
-| 17 | `GET /contests?status=later` | 400 |
-| 18 | `GET /contests/ca833134-dabd-4eba-8054-001384fa4b7d` | 200 |
-| 19 | `GET /contests/00000000-0000-0000-0000-000000000000` | 404 |
-| 20 | `GET /contests/not-a-uuid` | 400 |
-| 21 | `POST /contests` (vip) | 403 |
-| 22 | `POST /contests` (admin) | 400 |
-| 23 | `POST /contests` (admin) | 201 |
-| 24 | `PATCH /contests/209b58c1-d781-42d3-887b-6ad3df767e18` (admin) | 200 |
-| 25 | `POST /contests/209b58c1-d781-42d3-887b-6ad3df767e18/questions` (admin) | 400 |
-| 26 | `POST /contests/209b58c1-d781-42d3-887b-6ad3df767e18/questions` (admin) | 201 |
-| 27 | `POST /contests/209b58c1-d781-42d3-887b-6ad3df767e18/questions/generate` (admin) | 200 |
-| 28 | `POST /contests/209b58c1-d781-42d3-887b-6ad3df767e18/questions/generate` (admin) | 201 |
-| 29 | `GET /contests/209b58c1-d781-42d3-887b-6ad3df767e18/questions` (admin) | 200 |
-| 30 | `POST /contests/209b58c1-d781-42d3-887b-6ad3df767e18/join` | 401 |
-| 31 | `POST /contests/4c2a2636-e4f7-4ff4-99c3-1525aa504945/join` (user) | 403 |
-| 32 | `POST /contests/27fe6394-e91d-4e21-a467-c3cf951e4dc3/join` (user) | 409 |
-| 33 | `GET /contests/209b58c1-d781-42d3-887b-6ad3df767e18/questions` (user) | 403 |
-| 34 | `POST /contests/209b58c1-d781-42d3-887b-6ad3df767e18/join` (user) | 201 |
-| 35 | `POST /contests/209b58c1-d781-42d3-887b-6ad3df767e18/join` (user) | 200 |
-| 36 | `GET /contests/209b58c1-d781-42d3-887b-6ad3df767e18/questions` (user) | 200 |
-| 37 | `POST /contests/209b58c1-d781-42d3-887b-6ad3df767e18/submit` (user) | 400 |
-| 38 | `POST /contests/209b58c1-d781-42d3-887b-6ad3df767e18/submit` (user) | 200 |
-| 39 | `POST /contests/209b58c1-d781-42d3-887b-6ad3df767e18/submit` (user) | 409 |
-| 40 | `GET /contests/209b58c1-d781-42d3-887b-6ad3df767e18/result` (user) | 200 |
-| 41 | `GET /me/in-progress` (late user) | 200 |
-| 42 | `GET /contests/209b58c1-d781-42d3-887b-6ad3df767e18/leaderboard` (user) | 200 |
-| 43 | `GET /leaderboard` | 200 |
-| 44 | `POST /contests/209b58c1-d781-42d3-887b-6ad3df767e18/finalize` (admin) | 409 |
-| 45 | `GET /contests/209b58c1-d781-42d3-887b-6ad3df767e18` | 200 |
-| 46 | `POST /contests/209b58c1-d781-42d3-887b-6ad3df767e18/finalize` (admin) | 409 |
-| 47 | `GET /me/prizes` (vip) | 200 |
-| 48 | `GET /me/prizes` (user) | 200 |
-| 49 | `GET /me/history` (vip) | 200 |
-| 50 | `GET /me/in-progress` (late user) | 200 |
-| 51 | `POST /contests/209b58c1-d781-42d3-887b-6ad3df767e18/submit` (late user) | 409 |
-| 52 | `GET /contests/search?q=Show%20me%20active%20VIP%20contests` | 200 |
-| 53 | `GET /contests/search?q=Find%20beginner%20contests%20about%20JavaScript` | 200 |
-| 54 | `GET /contests/search?q=I%20want%20a%20difficult%20JavaScript%20contest%20starting%20this%20week` | 200 |
-| 55 | `GET /contests/search?q=Show%20me%20contests%20related%20to%20backend%20development%20with%20prizes` | 200 |
-| 56 | `GET /contests/search?q=show%20me%20ACTIVE%20%20%20vip%20contests` | 200 |
-| 57 | `GET /contests/search?q=typescript%20contests` | 200 |
-| 58 | `GET /contests/search?q=rate limit probe 10` (user) | 429 |
-| 59 | `POST /auth/login` | 400 |
-| 60 | `GET /nope` | 404 |
-| 61 | `GET /contests/search?q=active%20contests` | 502 |
-| 62 | `POST /contests/209b58c1-d781-42d3-887b-6ad3df767e18/questions/generate` (admin) | 502 |
-| 63 | `DELETE /contests/209b58c1-d781-42d3-887b-6ad3df767e18` (admin) | 204 |
-| 64 | `GET /contests/209b58c1-d781-42d3-887b-6ad3df767e18` | 404 |
+| 10 | `PATCH /users/d1853d50-e4e8-487a-9a01-0de0a4c5157c/role` (admin) | 200 |
+| 11 | `PATCH /users/d1853d50-e4e8-487a-9a01-0de0a4c5157c/role` (user) | 403 |
+| 12 | `GET /users?q=walk&pageSize=5` (admin) | 200 |
+| 13 | `POST /auth/login` | 200 |
+| 14 | `GET /contests` | 200 |
+| 15 | `GET /contests?status=active&access=vip` | 200 |
+| 16 | `GET /contests?tag=sql` | 200 |
+| 17 | `GET /contests?q=streams` | 200 |
+| 18 | `GET /contests?status=later` | 400 |
+| 19 | `GET /contests/ca833134-dabd-4eba-8054-001384fa4b7d` | 200 |
+| 20 | `GET /contests/00000000-0000-0000-0000-000000000000` | 404 |
+| 21 | `GET /contests/not-a-uuid` | 400 |
+| 22 | `POST /contests` (vip) | 403 |
+| 23 | `POST /contests` (admin) | 400 |
+| 24 | `POST /contests` (admin) | 201 |
+| 25 | `PATCH /contests/07ae1c6e-cecb-4ac8-90e1-114dda9979b5` (admin) | 200 |
+| 26 | `POST /contests/07ae1c6e-cecb-4ac8-90e1-114dda9979b5/questions` (admin) | 400 |
+| 27 | `POST /contests/07ae1c6e-cecb-4ac8-90e1-114dda9979b5/questions` (admin) | 201 |
+| 28 | `POST /contests/07ae1c6e-cecb-4ac8-90e1-114dda9979b5/questions/generate` (admin) | 200 |
+| 29 | `POST /contests/07ae1c6e-cecb-4ac8-90e1-114dda9979b5/questions/generate` (admin) | 201 |
+| 30 | `GET /contests/07ae1c6e-cecb-4ac8-90e1-114dda9979b5/questions` (admin) | 200 |
+| 31 | `POST /contests/07ae1c6e-cecb-4ac8-90e1-114dda9979b5/join` | 401 |
+| 32 | `POST /contests/4c2a2636-e4f7-4ff4-99c3-1525aa504945/join` (user) | 403 |
+| 33 | `POST /contests/27fe6394-e91d-4e21-a467-c3cf951e4dc3/join` (user) | 409 |
+| 34 | `GET /contests/07ae1c6e-cecb-4ac8-90e1-114dda9979b5/questions` (user) | 403 |
+| 35 | `POST /contests/07ae1c6e-cecb-4ac8-90e1-114dda9979b5/join` (user) | 201 |
+| 36 | `POST /contests/07ae1c6e-cecb-4ac8-90e1-114dda9979b5/join` (user) | 200 |
+| 37 | `GET /contests/07ae1c6e-cecb-4ac8-90e1-114dda9979b5/questions` (user) | 200 |
+| 38 | `POST /contests/07ae1c6e-cecb-4ac8-90e1-114dda9979b5/submit` (user) | 400 |
+| 39 | `POST /contests/07ae1c6e-cecb-4ac8-90e1-114dda9979b5/submit` (user) | 200 |
+| 40 | `POST /contests/07ae1c6e-cecb-4ac8-90e1-114dda9979b5/submit` (user) | 409 |
+| 41 | `GET /contests/07ae1c6e-cecb-4ac8-90e1-114dda9979b5/result` (user) | 200 |
+| 42 | `GET /me/in-progress` (late user) | 200 |
+| 43 | `GET /contests/07ae1c6e-cecb-4ac8-90e1-114dda9979b5/leaderboard` (user) | 200 |
+| 44 | `GET /leaderboard` | 200 |
+| 45 | `POST /contests/07ae1c6e-cecb-4ac8-90e1-114dda9979b5/finalize` (admin) | 409 |
+| 46 | `GET /contests/07ae1c6e-cecb-4ac8-90e1-114dda9979b5` | 200 |
+| 47 | `POST /contests/07ae1c6e-cecb-4ac8-90e1-114dda9979b5/finalize` (admin) | 409 |
+| 48 | `GET /me/prizes` (vip) | 200 |
+| 49 | `GET /me/prizes` (user) | 200 |
+| 50 | `GET /me/history` (vip) | 200 |
+| 51 | `GET /me/in-progress` (late user) | 200 |
+| 52 | `POST /contests/07ae1c6e-cecb-4ac8-90e1-114dda9979b5/submit` (late user) | 409 |
+| 53 | `GET /contests/search?q=Show%20me%20active%20VIP%20contests` | 200 |
+| 54 | `GET /contests/search?q=Find%20beginner%20contests%20about%20JavaScript` | 200 |
+| 55 | `GET /contests/search?q=I%20want%20a%20difficult%20JavaScript%20contest%20starting%20this%20week` | 200 |
+| 56 | `GET /contests/search?q=Show%20me%20contests%20related%20to%20backend%20development%20with%20prizes` | 200 |
+| 57 | `GET /contests/search?q=show%20me%20ACTIVE%20%20%20vip%20contests` | 200 |
+| 58 | `GET /contests/search?q=typescript%20contests` | 200 |
+| 59 | `GET /contests/search?q=rate limit probe 10` (user) | 429 |
+| 60 | `POST /auth/login` | 400 |
+| 61 | `GET /nope` | 404 |
+| 62 | `GET /contests/search?q=active%20contests` | 502 |
+| 63 | `POST /contests/07ae1c6e-cecb-4ac8-90e1-114dda9979b5/questions/generate` (admin) | 502 |
+| 64 | `DELETE /contests/07ae1c6e-cecb-4ac8-90e1-114dda9979b5` (admin) | 204 |
+| 65 | `GET /contests/07ae1c6e-cecb-4ac8-90e1-114dda9979b5` | 404 |
 
 ### Health
 
@@ -344,7 +348,7 @@ Request body:
 ```json
 {
   "name": "Walkthrough User",
-  "email": "walk-user-1792644924022@example.com",
+  "email": "walk-user-1792648167994@example.com",
   "password": "password123"
 }
 ```
@@ -354,11 +358,11 @@ Response `201 Created`:
 {
   "token": "eyJhbGciOiJIUzI1NiIs...",
   "user": {
-    "id": "e0cd21ba-ff84-452b-bfd5-0574a7a47e97",
+    "id": "e5ac78fd-0837-4919-85a2-b8faf02152b6",
     "name": "Walkthrough User",
-    "email": "walk-user-1792644924022@example.com",
+    "email": "walk-user-1792648167994@example.com",
     "role": "user",
-    "created_at": "2026-10-22T04:55:25.536Z"
+    "created_at": "2026-10-22T05:49:28.098Z"
   }
 }
 ```
@@ -373,7 +377,7 @@ Request body:
 ```json
 {
   "name": "Walkthrough User",
-  "email": "walk-user-1792644924022@example.com",
+  "email": "walk-user-1792648167994@example.com",
   "password": "password123"
 }
 ```
@@ -485,11 +489,11 @@ Response `200 OK`:
 Response `200 OK`:
 ```json
 {
-  "id": "e0cd21ba-ff84-452b-bfd5-0574a7a47e97",
+  "id": "e5ac78fd-0837-4919-85a2-b8faf02152b6",
   "name": "Walkthrough User",
-  "email": "walk-user-1792644924022@example.com",
+  "email": "walk-user-1792648167994@example.com",
   "role": "user",
-  "created_at": "2026-10-22T04:55:25.536Z"
+  "created_at": "2026-10-22T05:49:28.098Z"
 }
 ```
 
@@ -529,7 +533,7 @@ A malformed or expired token is `401 INVALID_TOKEN`, even on routes where guests
 
 #### 10. Admin promotes a user to VIP
 
-`PATCH /users/9d8e2be3-a1f2-4ab7-9c3a-0e03d8280be4/role` as admin
+`PATCH /users/d1853d50-e4e8-487a-9a01-0de0a4c5157c/role` as admin
 
 Request body:
 ```json
@@ -541,11 +545,11 @@ Request body:
 Response `200 OK`:
 ```json
 {
-  "id": "9d8e2be3-a1f2-4ab7-9c3a-0e03d8280be4",
+  "id": "d1853d50-e4e8-487a-9a01-0de0a4c5157c",
   "name": "Walkthrough VIP",
-  "email": "walk-vip-1792644924022@example.com",
+  "email": "walk-vip-1792648167994@example.com",
   "role": "vip",
-  "created_at": "2026-10-22T04:55:26.638Z"
+  "created_at": "2026-10-22T05:49:29.112Z"
 }
 ```
 
@@ -553,7 +557,7 @@ Response `200 OK`:
 
 #### 11. A normal user tries to change a role
 
-`PATCH /users/9d8e2be3-a1f2-4ab7-9c3a-0e03d8280be4/role` as user
+`PATCH /users/d1853d50-e4e8-487a-9a01-0de0a4c5157c/role` as user
 
 Request body:
 ```json
@@ -574,14 +578,53 @@ Response `403 Forbidden`:
 
 `403 FORBIDDEN`. The role check happens before validation, so the body is never even looked at.
 
-#### 12. The promoted user logs in again
+#### 12. Admin lists users
+
+`GET /users?q=walk&pageSize=5` as admin
+
+Response `200 OK`:
+```json
+{
+  "items": [
+    {
+      "id": "d1853d50-e4e8-487a-9a01-0de0a4c5157c",
+      "name": "Walkthrough VIP",
+      "email": "walk-vip-1792648167994@example.com",
+      "role": "vip",
+      "created_at": "2026-10-22T05:49:29.112Z"
+    },
+    {
+      "id": "e5ac78fd-0837-4919-85a2-b8faf02152b6",
+      "name": "Walkthrough User",
+      "email": "walk-user-1792648167994@example.com",
+      "role": "user",
+      "created_at": "2026-10-22T05:49:28.098Z"
+    },
+    {
+      "id": "78c66463-c215-4484-9016-a89787d15b2a",
+      "name": "Walkthrough Late",
+      "email": "walk-late-1792644924022@example.com",
+      "role": "user",
+      "created_at": "2026-10-22T04:55:27.277Z"
+    },
+    "... 2 more"
+  ],
+  "total": 8,
+  "page": 1,
+  "pageSize": 5
+}
+```
+
+Admin only. `q` matches name or email, newest accounts first. The frontend uses this to find the account whose role to change.
+
+#### 13. The promoted user logs in again
 
 `POST /auth/login` with no token
 
 Request body:
 ```json
 {
-  "email": "walk-vip-1792644924022@example.com",
+  "email": "walk-vip-1792648167994@example.com",
   "password": "password123"
 }
 ```
@@ -591,11 +634,11 @@ Response `200 OK`:
 {
   "token": "eyJhbGciOiJIUzI1NiIs...",
   "user": {
-    "id": "9d8e2be3-a1f2-4ab7-9c3a-0e03d8280be4",
+    "id": "d1853d50-e4e8-487a-9a01-0de0a4c5157c",
     "name": "Walkthrough VIP",
-    "email": "walk-vip-1792644924022@example.com",
+    "email": "walk-vip-1792648167994@example.com",
     "role": "vip",
-    "created_at": "2026-10-22T04:55:26.638Z"
+    "created_at": "2026-10-22T05:49:29.112Z"
   }
 }
 ```
@@ -606,7 +649,7 @@ The old token still says `role: "user"`. This one says `vip`.
 
 Listing and viewing are open to everyone. `status` is computed from `start_time` and `end_time` at request time, never stored. `can_participate` is computed per caller.
 
-#### 13. List contests
+#### 14. List contests
 
 `GET /contests` with no token
 
@@ -686,7 +729,7 @@ Response `200 OK`:
 
 Paginated (`page`, `pageSize` up to 100), ordered by `start_time`. For a guest `can_participate` is always `false`.
 
-#### 14. Filter: active VIP contests
+#### 15. Filter: active VIP contests
 
 `GET /contests?status=active&access=vip` with no token
 
@@ -724,7 +767,7 @@ Response `200 OK`:
 
 Filters are plain SQL `where` clauses built in `applyFilters`. They combine freely with `difficulty`, `tag` and `q`.
 
-#### 15. Filter: by tag
+#### 16. Filter: by tag
 
 `GET /contests?tag=sql` with no token
 
@@ -763,7 +806,7 @@ Response `200 OK`:
 
 Tags are a Postgres `text[]` column with a GIN index; the match is case-insensitive.
 
-#### 16. Filter: full-text search
+#### 17. Filter: full-text search
 
 `GET /contests?q=streams` with no token
 
@@ -801,7 +844,7 @@ Response `200 OK`:
 
 `q` goes through `plainto_tsquery` against a generated `tsvector` column (name, description and tags), backed by a GIN index. "streams" is found in the Node contest description.
 
-#### 17. Filter with an invalid value
+#### 18. Filter with an invalid value
 
 `GET /contests?status=later` with no token
 
@@ -823,7 +866,7 @@ Response `400 Bad Request`:
 
 Query strings are validated like bodies.
 
-#### 18. View one contest
+#### 19. View one contest
 
 `GET /contests/ca833134-dabd-4eba-8054-001384fa4b7d` with no token
 
@@ -850,14 +893,14 @@ Response `200 OK`:
   "status": "active",
   "can_participate": false,
   "question_count": 4,
-  "participant_count": 9,
+  "participant_count": 10,
   "my_participation": null
 }
 ```
 
 Adds `question_count`, `participant_count` and, for a signed-in caller, `my_participation`.
 
-#### 19. View a contest that does not exist
+#### 20. View a contest that does not exist
 
 `GET /contests/00000000-0000-0000-0000-000000000000` with no token
 
@@ -873,7 +916,7 @@ Response `404 Not Found`:
 
 `404 CONTEST_NOT_FOUND` from `getContest`, shared by every `/:id` route.
 
-#### 20. View with a malformed id
+#### 21. View with a malformed id
 
 `GET /contests/not-a-uuid` with no token
 
@@ -899,7 +942,7 @@ Caught by the `idParam` schema before any SQL runs.
 
 Only admins create, edit and delete contests and questions. The contest created here runs for about 25 seconds so the finalizer section can show it ending.
 
-#### 21. Create a contest as a VIP
+#### 22. Create a contest as a VIP
 
 `POST /contests` as vip
 
@@ -924,7 +967,7 @@ Response `403 Forbidden`:
 
 VIP is still not admin.
 
-#### 22. Create a contest with end before start
+#### 23. Create a contest with end before start
 
 `POST /contests` as admin
 
@@ -955,14 +998,14 @@ Response `400 Bad Request`:
 
 The zod schema has a `refine` for the date order and reports it on the `end_time` field. The database has the same rule as a `check` constraint.
 
-#### 23. Create a contest
+#### 24. Create a contest
 
 `POST /contests` as admin
 
 Request body:
 ```json
 {
-  "name": "Walkthrough Contest 1792644924022",
+  "name": "Walkthrough Contest 1792648167994",
   "description": "Created by the walkthrough script. Ends in a few seconds.",
   "access_level": "normal",
   "difficulty": "intermediate",
@@ -979,8 +1022,8 @@ Request body:
 Response `201 Created`:
 ```json
 {
-  "id": "209b58c1-d781-42d3-887b-6ad3df767e18",
-  "name": "Walkthrough Contest 1792644924022",
+  "id": "07ae1c6e-cecb-4ac8-90e1-114dda9979b5",
+  "name": "Walkthrough Contest 1792648167994",
   "description": "Created by the walkthrough script. Ends in a few seconds.",
   "access_level": "normal",
   "difficulty": "intermediate",
@@ -989,13 +1032,13 @@ Response `201 Created`:
     "backend"
   ],
   "prize": "Walkthrough trophy",
-  "start_time": "2026-10-22T04:55:25.754Z",
-  "end_time": "2026-10-22T04:55:51.731Z",
+  "start_time": "2026-10-22T05:49:29.310Z",
+  "end_time": "2026-10-22T05:49:55.269Z",
   "created_by": "95ffde0c-e3cb-4894-b8ab-8adfdfaa8892",
   "finalized_at": null,
   "winner_user_id": null,
-  "created_at": "2026-10-22T04:55:27.422Z",
-  "updated_at": "2026-10-22T04:55:27.422Z",
+  "created_at": "2026-10-22T05:49:30.025Z",
+  "updated_at": "2026-10-22T05:49:30.025Z",
   "status": "active",
   "can_participate": true
 }
@@ -1003,9 +1046,9 @@ Response `201 Created`:
 
 Defaults fill in what is not sent (`description`, `access_level`, `difficulty`, `tags`, `prize`). Tags are lower-cased. `status` is already `active` because `start_time` is in the past.
 
-#### 24. Edit a contest
+#### 25. Edit a contest
 
-`PATCH /contests/209b58c1-d781-42d3-887b-6ad3df767e18` as admin
+`PATCH /contests/07ae1c6e-cecb-4ac8-90e1-114dda9979b5` as admin
 
 Request body:
 ```json
@@ -1017,8 +1060,8 @@ Request body:
 Response `200 OK`:
 ```json
 {
-  "id": "209b58c1-d781-42d3-887b-6ad3df767e18",
-  "name": "Walkthrough Contest 1792644924022",
+  "id": "07ae1c6e-cecb-4ac8-90e1-114dda9979b5",
+  "name": "Walkthrough Contest 1792648167994",
   "description": "Edited by the walkthrough script.",
   "access_level": "normal",
   "difficulty": "intermediate",
@@ -1027,13 +1070,13 @@ Response `200 OK`:
     "backend"
   ],
   "prize": "Walkthrough trophy",
-  "start_time": "2026-10-22T04:55:25.754Z",
-  "end_time": "2026-10-22T04:55:51.731Z",
+  "start_time": "2026-10-22T05:49:29.310Z",
+  "end_time": "2026-10-22T05:49:55.269Z",
   "created_by": "95ffde0c-e3cb-4894-b8ab-8adfdfaa8892",
   "finalized_at": null,
   "winner_user_id": null,
-  "created_at": "2026-10-22T04:55:27.422Z",
-  "updated_at": "2026-10-22T04:55:27.455Z",
+  "created_at": "2026-10-22T05:49:30.025Z",
+  "updated_at": "2026-10-22T05:49:30.044Z",
   "status": "active",
   "can_participate": true
 }
@@ -1041,9 +1084,9 @@ Response `200 OK`:
 
 A PATCH only touches the fields it names: `prize` and `tags` are unchanged. The schema for PATCH deliberately has no defaults.
 
-#### 25. Add questions with a mistake
+#### 26. Add questions with a mistake
 
-`POST /contests/209b58c1-d781-42d3-887b-6ad3df767e18/questions` as admin
+`POST /contests/07ae1c6e-cecb-4ac8-90e1-114dda9979b5/questions` as admin
 
 Request body:
 ```json
@@ -1082,9 +1125,9 @@ Response `400 Bad Request`:
 
 Question rules live in one zod schema: unique options, every correct answer must be an option, true/false must use exactly `["True", "False"]`, single-select and true/false have exactly one answer. The field path points at the exact question.
 
-#### 26. Add questions
+#### 27. Add questions
 
-`POST /contests/209b58c1-d781-42d3-887b-6ad3df767e18/questions` as admin
+`POST /contests/07ae1c6e-cecb-4ac8-90e1-114dda9979b5/questions` as admin
 
 Request body:
 ```json
@@ -1140,8 +1183,8 @@ Response `201 Created`:
 {
   "questions": [
     {
-      "id": "400e4d1a-33d9-474c-a435-71d3a8256dd0",
-      "contest_id": "209b58c1-d781-42d3-887b-6ad3df767e18",
+      "id": "648693a8-aba6-40bf-91d7-c2a002b146de",
+      "contest_id": "07ae1c6e-cecb-4ac8-90e1-114dda9979b5",
       "type": "single-select",
       "text": "Which phase of the event loop runs setImmediate callbacks?",
       "options": [
@@ -1156,11 +1199,11 @@ Response `201 Created`:
       "explanation": "setImmediate runs in the check phase.",
       "points": 1,
       "position": 1,
-      "created_at": "2026-10-22T04:55:27.489Z"
+      "created_at": "2026-10-22T05:49:30.081Z"
     },
     {
-      "id": "53b61759-92c9-47cf-a335-ad359c04c88a",
-      "contest_id": "209b58c1-d781-42d3-887b-6ad3df767e18",
+      "id": "ae0349d3-88e2-4fb9-9e51-1395e8df50f5",
+      "contest_id": "07ae1c6e-cecb-4ac8-90e1-114dda9979b5",
       "type": "multi-select",
       "text": "Which of these are readable stream events?",
       "options": [
@@ -1177,11 +1220,11 @@ Response `201 Created`:
       "explanation": null,
       "points": 2,
       "position": 2,
-      "created_at": "2026-10-22T04:55:27.489Z"
+      "created_at": "2026-10-22T05:49:30.081Z"
     },
     {
-      "id": "218ac24b-d74d-4852-9792-2990ab794c44",
-      "contest_id": "209b58c1-d781-42d3-887b-6ad3df767e18",
+      "id": "ea46df37-3d17-43a3-a259-090551c00e48",
+      "contest_id": "07ae1c6e-cecb-4ac8-90e1-114dda9979b5",
       "type": "true-false",
       "text": "process.nextTick callbacks run before promise microtasks.",
       "options": [
@@ -1194,7 +1237,7 @@ Response `201 Created`:
       "explanation": null,
       "points": 1,
       "position": 3,
-      "created_at": "2026-10-22T04:55:27.489Z"
+      "created_at": "2026-10-22T05:49:30.081Z"
     }
   ]
 }
@@ -1202,9 +1245,9 @@ Response `201 Created`:
 
 `position` continues from the contest's current last question inside a transaction. `points` defaults to 1; the multi-select here is worth 2.
 
-#### 27. Generate questions: preview
+#### 28. Generate questions: preview
 
-`POST /contests/209b58c1-d781-42d3-887b-6ad3df767e18/questions/generate` as admin
+`POST /contests/07ae1c6e-cecb-4ac8-90e1-114dda9979b5/questions/generate` as admin
 
 Request body:
 ```json
@@ -1286,9 +1329,9 @@ Response `200 OK`:
 
 `save: false` returns the questions without storing them. `provider` says who answered: here the mock, which picks real questions from its built-in bank. Model output is validated with the same question schema as the admin endpoint; anything that fails is counted in `rejected`.
 
-#### 28. Generate questions and save them
+#### 29. Generate questions and save them
 
-`POST /contests/209b58c1-d781-42d3-887b-6ad3df767e18/questions/generate` as admin
+`POST /contests/07ae1c6e-cecb-4ac8-90e1-114dda9979b5/questions/generate` as admin
 
 Request body:
 ```json
@@ -1312,8 +1355,8 @@ Response `201 Created`:
   "saved": true,
   "questions": [
     {
-      "id": "7cec5f23-a662-4ee2-8aff-d140998f5beb",
-      "contest_id": "209b58c1-d781-42d3-887b-6ad3df767e18",
+      "id": "3207b275-f58a-4f21-8934-03a2612706a7",
+      "contest_id": "07ae1c6e-cecb-4ac8-90e1-114dda9979b5",
       "type": "true-false",
       "text": "Arrow functions have their own this binding.",
       "options": [
@@ -1326,11 +1369,11 @@ Response `201 Created`:
       "explanation": "Arrow functions take this from the surrounding scope.",
       "points": 1,
       "position": 4,
-      "created_at": "2026-10-22T04:55:27.540Z"
+      "created_at": "2026-10-22T05:49:30.139Z"
     },
     {
-      "id": "5d935a88-fae6-4681-93f2-29b54a5d8e34",
-      "contest_id": "209b58c1-d781-42d3-887b-6ad3df767e18",
+      "id": "875ba569-18b5-4d23-8425-5a75fb7bd6ae",
+      "contest_id": "07ae1c6e-cecb-4ac8-90e1-114dda9979b5",
       "type": "true-false",
       "text": "== converts both operands to a common type before comparing them.",
       "options": [
@@ -1343,7 +1386,7 @@ Response `201 Created`:
       "explanation": "Use === to compare without coercion.",
       "points": 1,
       "position": 5,
-      "created_at": "2026-10-22T04:55:27.540Z"
+      "created_at": "2026-10-22T05:49:30.139Z"
     }
   ]
 }
@@ -1351,17 +1394,17 @@ Response `201 Created`:
 
 `201` because rows were written. The saved rows look exactly like hand-written questions: same table, same columns, `position` continues after the three above.
 
-#### 29. Questions as seen by an admin
+#### 30. Questions as seen by an admin
 
-`GET /contests/209b58c1-d781-42d3-887b-6ad3df767e18/questions` as admin
+`GET /contests/07ae1c6e-cecb-4ac8-90e1-114dda9979b5/questions` as admin
 
 Response `200 OK`:
 ```json
 {
   "questions": [
     {
-      "id": "400e4d1a-33d9-474c-a435-71d3a8256dd0",
-      "contest_id": "209b58c1-d781-42d3-887b-6ad3df767e18",
+      "id": "648693a8-aba6-40bf-91d7-c2a002b146de",
+      "contest_id": "07ae1c6e-cecb-4ac8-90e1-114dda9979b5",
       "type": "single-select",
       "text": "Which phase of the event loop runs setImmediate callbacks?",
       "options": [
@@ -1376,11 +1419,11 @@ Response `200 OK`:
       "explanation": "setImmediate runs in the check phase.",
       "points": 1,
       "position": 1,
-      "created_at": "2026-10-22T04:55:27.489Z"
+      "created_at": "2026-10-22T05:49:30.081Z"
     },
     {
-      "id": "53b61759-92c9-47cf-a335-ad359c04c88a",
-      "contest_id": "209b58c1-d781-42d3-887b-6ad3df767e18",
+      "id": "ae0349d3-88e2-4fb9-9e51-1395e8df50f5",
+      "contest_id": "07ae1c6e-cecb-4ac8-90e1-114dda9979b5",
       "type": "multi-select",
       "text": "Which of these are readable stream events?",
       "options": [
@@ -1397,11 +1440,11 @@ Response `200 OK`:
       "explanation": null,
       "points": 2,
       "position": 2,
-      "created_at": "2026-10-22T04:55:27.489Z"
+      "created_at": "2026-10-22T05:49:30.081Z"
     },
     {
-      "id": "218ac24b-d74d-4852-9792-2990ab794c44",
-      "contest_id": "209b58c1-d781-42d3-887b-6ad3df767e18",
+      "id": "ea46df37-3d17-43a3-a259-090551c00e48",
+      "contest_id": "07ae1c6e-cecb-4ac8-90e1-114dda9979b5",
       "type": "true-false",
       "text": "process.nextTick callbacks run before promise microtasks.",
       "options": [
@@ -1414,11 +1457,11 @@ Response `200 OK`:
       "explanation": null,
       "points": 1,
       "position": 3,
-      "created_at": "2026-10-22T04:55:27.489Z"
+      "created_at": "2026-10-22T05:49:30.081Z"
     },
     {
-      "id": "7cec5f23-a662-4ee2-8aff-d140998f5beb",
-      "contest_id": "209b58c1-d781-42d3-887b-6ad3df767e18",
+      "id": "3207b275-f58a-4f21-8934-03a2612706a7",
+      "contest_id": "07ae1c6e-cecb-4ac8-90e1-114dda9979b5",
       "type": "true-false",
       "text": "Arrow functions have their own this binding.",
       "options": [
@@ -1431,11 +1474,11 @@ Response `200 OK`:
       "explanation": "Arrow functions take this from the surrounding scope.",
       "points": 1,
       "position": 4,
-      "created_at": "2026-10-22T04:55:27.540Z"
+      "created_at": "2026-10-22T05:49:30.139Z"
     },
     {
-      "id": "5d935a88-fae6-4681-93f2-29b54a5d8e34",
-      "contest_id": "209b58c1-d781-42d3-887b-6ad3df767e18",
+      "id": "875ba569-18b5-4d23-8425-5a75fb7bd6ae",
+      "contest_id": "07ae1c6e-cecb-4ac8-90e1-114dda9979b5",
       "type": "true-false",
       "text": "== converts both operands to a common type before comparing them.",
       "options": [
@@ -1448,7 +1491,7 @@ Response `200 OK`:
       "explanation": "Use === to compare without coercion.",
       "points": 1,
       "position": 5,
-      "created_at": "2026-10-22T04:55:27.540Z"
+      "created_at": "2026-10-22T05:49:30.139Z"
     }
   ]
 }
@@ -1460,9 +1503,9 @@ Admins get `correct_answers` and `explanation` without joining. The two generate
 
 Join, read the questions, submit once. Access rules: guests cannot join, `user` cannot join VIP contests, nothing can be joined unless the contest is active.
 
-#### 30. Join without a token
+#### 31. Join without a token
 
-`POST /contests/209b58c1-d781-42d3-887b-6ad3df767e18/join` with no token
+`POST /contests/07ae1c6e-cecb-4ac8-90e1-114dda9979b5/join` with no token
 
 Response `401 Unauthorized`:
 ```json
@@ -1476,7 +1519,7 @@ Response `401 Unauthorized`:
 
 `401`. Joining needs an account.
 
-#### 31. Join a VIP contest as a normal user
+#### 32. Join a VIP contest as a normal user
 
 `POST /contests/4c2a2636-e4f7-4ff4-99c3-1525aa504945/join` as user
 
@@ -1492,7 +1535,7 @@ Response `403 Forbidden`:
 
 `403 VIP_ONLY` from `assertCanParticipate`. VIP and admin pass; `user` only passes for `normal` contests.
 
-#### 32. Join an upcoming contest
+#### 33. Join an upcoming contest
 
 `POST /contests/27fe6394-e91d-4e21-a467-c3cf951e4dc3/join` as user
 
@@ -1508,9 +1551,9 @@ Response `409 Conflict`:
 
 `409 CONTEST_NOT_ACTIVE`. The same check blocks ended contests.
 
-#### 33. Read questions before joining
+#### 34. Read questions before joining
 
-`GET /contests/209b58c1-d781-42d3-887b-6ad3df767e18/questions` as user
+`GET /contests/07ae1c6e-cecb-4ac8-90e1-114dda9979b5/questions` as user
 
 Response `403 Forbidden`:
 ```json
@@ -1524,17 +1567,17 @@ Response `403 Forbidden`:
 
 `403 NOT_JOINED`. Questions are only visible to participants, so nobody can read them without being on the list.
 
-#### 34. Join the contest
+#### 35. Join the contest
 
-`POST /contests/209b58c1-d781-42d3-887b-6ad3df767e18/join` as user
+`POST /contests/07ae1c6e-cecb-4ac8-90e1-114dda9979b5/join` as user
 
 Response `201 Created`:
 ```json
 {
-  "id": "11667fff-024b-4ab1-9959-e3c3124fd5b9",
-  "contest_id": "209b58c1-d781-42d3-887b-6ad3df767e18",
-  "user_id": "e0cd21ba-ff84-452b-bfd5-0574a7a47e97",
-  "joined_at": "2026-10-22T04:55:27.614Z",
+  "id": "03cec0bf-573a-4e52-b530-a2c0881b4fd4",
+  "contest_id": "07ae1c6e-cecb-4ac8-90e1-114dda9979b5",
+  "user_id": "e5ac78fd-0837-4919-85a2-b8faf02152b6",
+  "joined_at": "2026-10-22T05:49:30.271Z",
   "submitted_at": null,
   "score": null
 }
@@ -1542,17 +1585,17 @@ Response `201 Created`:
 
 `201` with the participation row. The insert uses `on conflict do nothing` on `unique (contest_id, user_id)`, so two simultaneous joins cannot create two rows.
 
-#### 35. Join the same contest again
+#### 36. Join the same contest again
 
-`POST /contests/209b58c1-d781-42d3-887b-6ad3df767e18/join` as user
+`POST /contests/07ae1c6e-cecb-4ac8-90e1-114dda9979b5/join` as user
 
 Response `200 OK`:
 ```json
 {
-  "id": "11667fff-024b-4ab1-9959-e3c3124fd5b9",
-  "contest_id": "209b58c1-d781-42d3-887b-6ad3df767e18",
-  "user_id": "e0cd21ba-ff84-452b-bfd5-0574a7a47e97",
-  "joined_at": "2026-10-22T04:55:27.614Z",
+  "id": "03cec0bf-573a-4e52-b530-a2c0881b4fd4",
+  "contest_id": "07ae1c6e-cecb-4ac8-90e1-114dda9979b5",
+  "user_id": "e5ac78fd-0837-4919-85a2-b8faf02152b6",
+  "joined_at": "2026-10-22T05:49:30.271Z",
   "submitted_at": null,
   "score": null
 }
@@ -1560,17 +1603,17 @@ Response `200 OK`:
 
 Idempotent: `200` with the existing row instead of an error.
 
-#### 36. Read questions as a participant
+#### 37. Read questions as a participant
 
-`GET /contests/209b58c1-d781-42d3-887b-6ad3df767e18/questions` as user
+`GET /contests/07ae1c6e-cecb-4ac8-90e1-114dda9979b5/questions` as user
 
 Response `200 OK`:
 ```json
 {
   "questions": [
     {
-      "id": "400e4d1a-33d9-474c-a435-71d3a8256dd0",
-      "contest_id": "209b58c1-d781-42d3-887b-6ad3df767e18",
+      "id": "648693a8-aba6-40bf-91d7-c2a002b146de",
+      "contest_id": "07ae1c6e-cecb-4ac8-90e1-114dda9979b5",
       "type": "single-select",
       "text": "Which phase of the event loop runs setImmediate callbacks?",
       "options": [
@@ -1581,11 +1624,11 @@ Response `200 OK`:
       ],
       "points": 1,
       "position": 1,
-      "created_at": "2026-10-22T04:55:27.489Z"
+      "created_at": "2026-10-22T05:49:30.081Z"
     },
     {
-      "id": "53b61759-92c9-47cf-a335-ad359c04c88a",
-      "contest_id": "209b58c1-d781-42d3-887b-6ad3df767e18",
+      "id": "ae0349d3-88e2-4fb9-9e51-1395e8df50f5",
+      "contest_id": "07ae1c6e-cecb-4ac8-90e1-114dda9979b5",
       "type": "multi-select",
       "text": "Which of these are readable stream events?",
       "options": [
@@ -1596,11 +1639,11 @@ Response `200 OK`:
       ],
       "points": 2,
       "position": 2,
-      "created_at": "2026-10-22T04:55:27.489Z"
+      "created_at": "2026-10-22T05:49:30.081Z"
     },
     {
-      "id": "218ac24b-d74d-4852-9792-2990ab794c44",
-      "contest_id": "209b58c1-d781-42d3-887b-6ad3df767e18",
+      "id": "ea46df37-3d17-43a3-a259-090551c00e48",
+      "contest_id": "07ae1c6e-cecb-4ac8-90e1-114dda9979b5",
       "type": "true-false",
       "text": "process.nextTick callbacks run before promise microtasks.",
       "options": [
@@ -1609,11 +1652,11 @@ Response `200 OK`:
       ],
       "points": 1,
       "position": 3,
-      "created_at": "2026-10-22T04:55:27.489Z"
+      "created_at": "2026-10-22T05:49:30.081Z"
     },
     {
-      "id": "7cec5f23-a662-4ee2-8aff-d140998f5beb",
-      "contest_id": "209b58c1-d781-42d3-887b-6ad3df767e18",
+      "id": "3207b275-f58a-4f21-8934-03a2612706a7",
+      "contest_id": "07ae1c6e-cecb-4ac8-90e1-114dda9979b5",
       "type": "true-false",
       "text": "Arrow functions have their own this binding.",
       "options": [
@@ -1622,11 +1665,11 @@ Response `200 OK`:
       ],
       "points": 1,
       "position": 4,
-      "created_at": "2026-10-22T04:55:27.540Z"
+      "created_at": "2026-10-22T05:49:30.139Z"
     },
     {
-      "id": "5d935a88-fae6-4681-93f2-29b54a5d8e34",
-      "contest_id": "209b58c1-d781-42d3-887b-6ad3df767e18",
+      "id": "875ba569-18b5-4d23-8425-5a75fb7bd6ae",
+      "contest_id": "07ae1c6e-cecb-4ac8-90e1-114dda9979b5",
       "type": "true-false",
       "text": "== converts both operands to a common type before comparing them.",
       "options": [
@@ -1635,7 +1678,7 @@ Response `200 OK`:
       ],
       "points": 1,
       "position": 5,
-      "created_at": "2026-10-22T04:55:27.540Z"
+      "created_at": "2026-10-22T05:49:30.139Z"
     }
   ]
 }
@@ -1643,16 +1686,16 @@ Response `200 OK`:
 
 `correct_answers` and `explanation` are stripped for participants. Compare with the admin view above.
 
-#### 37. Submit an answer that is not an option
+#### 38. Submit an answer that is not an option
 
-`POST /contests/209b58c1-d781-42d3-887b-6ad3df767e18/submit` as user
+`POST /contests/07ae1c6e-cecb-4ac8-90e1-114dda9979b5/submit` as user
 
 Request body:
 ```json
 {
   "answers": [
     {
-      "questionId": "400e4d1a-33d9-474c-a435-71d3a8256dd0",
+      "questionId": "648693a8-aba6-40bf-91d7-c2a002b146de",
       "selected": [
         "not an option"
       ]
@@ -1666,41 +1709,41 @@ Response `400 Bad Request`:
 {
   "error": {
     "code": "INVALID_OPTION",
-    "message": "Not an option for question 400e4d1a-33d9-474c-a435-71d3a8256dd0: not an option"
+    "message": "Not an option for question 648693a8-aba6-40bf-91d7-c2a002b146de: not an option"
   }
 }
 ```
 
 `400 INVALID_OPTION`. Also rejected: unknown question ids (`UNKNOWN_QUESTION`), the same question twice (`DUPLICATE_ANSWER`), several answers to a single-select question.
 
-#### 38. Submit answers
+#### 39. Submit answers
 
-`POST /contests/209b58c1-d781-42d3-887b-6ad3df767e18/submit` as user
+`POST /contests/07ae1c6e-cecb-4ac8-90e1-114dda9979b5/submit` as user
 
 Request body:
 ```json
 {
   "answers": [
     {
-      "questionId": "400e4d1a-33d9-474c-a435-71d3a8256dd0",
+      "questionId": "648693a8-aba6-40bf-91d7-c2a002b146de",
       "selected": [
         "check"
       ]
     },
     {
-      "questionId": "53b61759-92c9-47cf-a335-ad359c04c88a",
+      "questionId": "ae0349d3-88e2-4fb9-9e51-1395e8df50f5",
       "selected": [
         "data"
       ]
     },
     {
-      "questionId": "218ac24b-d74d-4852-9792-2990ab794c44",
+      "questionId": "ea46df37-3d17-43a3-a259-090551c00e48",
       "selected": [
         "True"
       ]
     },
     {
-      "questionId": "7cec5f23-a662-4ee2-8aff-d140998f5beb",
+      "questionId": "3207b275-f58a-4f21-8934-03a2612706a7",
       "selected": [
         "False"
       ]
@@ -1717,15 +1760,15 @@ Response `200 OK`:
   "correctCount": 3,
   "totalQuestions": 5,
   "rank": 1,
-  "submittedAt": "2026-10-22T04:55:27.845Z"
+  "submittedAt": "2026-10-22T05:49:30.390Z"
 }
 ```
 
 Scoring: a fully correct question adds its `points`, anything else adds 0. The multi-select got one of three answers, so it scores 0; the last question was not answered, also 0. `rank` is computed on the spot. The whole submit runs in one transaction with `select ... for update` on the participation row.
 
-#### 39. Submit a second time
+#### 40. Submit a second time
 
-`POST /contests/209b58c1-d781-42d3-887b-6ad3df767e18/submit` as user
+`POST /contests/07ae1c6e-cecb-4ac8-90e1-114dda9979b5/submit` as user
 
 Request body:
 ```json
@@ -1746,16 +1789,16 @@ Response `409 Conflict`:
 
 `409 ALREADY_SUBMITTED`. One submission per participation.
 
-#### 40. My result
+#### 41. My result
 
-`GET /contests/209b58c1-d781-42d3-887b-6ad3df767e18/result` as user
+`GET /contests/07ae1c6e-cecb-4ac8-90e1-114dda9979b5/result` as user
 
 Response `200 OK`:
 ```json
 {
   "contest": {
-    "id": "209b58c1-d781-42d3-887b-6ad3df767e18",
-    "name": "Walkthrough Contest 1792644924022",
+    "id": "07ae1c6e-cecb-4ac8-90e1-114dda9979b5",
+    "name": "Walkthrough Contest 1792648167994",
     "description": "Edited by the walkthrough script.",
     "access_level": "normal",
     "difficulty": "intermediate",
@@ -1764,27 +1807,27 @@ Response `200 OK`:
       "backend"
     ],
     "prize": "Walkthrough trophy",
-    "start_time": "2026-10-22T04:55:25.754Z",
-    "end_time": "2026-10-22T04:55:51.731Z",
+    "start_time": "2026-10-22T05:49:29.310Z",
+    "end_time": "2026-10-22T05:49:55.269Z",
     "created_by": "95ffde0c-e3cb-4894-b8ab-8adfdfaa8892",
     "finalized_at": null,
     "winner_user_id": null,
-    "created_at": "2026-10-22T04:55:27.422Z",
-    "updated_at": "2026-10-22T04:55:27.455Z",
+    "created_at": "2026-10-22T05:49:30.025Z",
+    "updated_at": "2026-10-22T05:49:30.044Z",
     "status": "active",
     "can_participate": true
   },
   "participation": {
-    "id": "11667fff-024b-4ab1-9959-e3c3124fd5b9",
-    "contest_id": "209b58c1-d781-42d3-887b-6ad3df767e18",
-    "user_id": "e0cd21ba-ff84-452b-bfd5-0574a7a47e97",
-    "joined_at": "2026-10-22T04:55:27.614Z",
-    "submitted_at": "2026-10-22T04:55:27.845Z",
+    "id": "03cec0bf-573a-4e52-b530-a2c0881b4fd4",
+    "contest_id": "07ae1c6e-cecb-4ac8-90e1-114dda9979b5",
+    "user_id": "e5ac78fd-0837-4919-85a2-b8faf02152b6",
+    "joined_at": "2026-10-22T05:49:30.271Z",
+    "submitted_at": "2026-10-22T05:49:30.390Z",
     "score": 3
   },
   "answers": [
     {
-      "question_id": "400e4d1a-33d9-474c-a435-71d3a8256dd0",
+      "question_id": "648693a8-aba6-40bf-91d7-c2a002b146de",
       "text": "Which phase of the event loop runs setImmediate callbacks?",
       "type": "single-select",
       "options": [
@@ -1804,7 +1847,7 @@ Response `200 OK`:
       "is_correct": true
     },
     {
-      "question_id": "53b61759-92c9-47cf-a335-ad359c04c88a",
+      "question_id": "ae0349d3-88e2-4fb9-9e51-1395e8df50f5",
       "text": "Which of these are readable stream events?",
       "type": "multi-select",
       "options": [
@@ -1826,7 +1869,7 @@ Response `200 OK`:
       "is_correct": false
     },
     {
-      "question_id": "218ac24b-d74d-4852-9792-2990ab794c44",
+      "question_id": "ea46df37-3d17-43a3-a259-090551c00e48",
       "text": "process.nextTick callbacks run before promise microtasks.",
       "type": "true-false",
       "options": [
@@ -1844,7 +1887,7 @@ Response `200 OK`:
       "is_correct": true
     },
     {
-      "question_id": "7cec5f23-a662-4ee2-8aff-d140998f5beb",
+      "question_id": "3207b275-f58a-4f21-8934-03a2612706a7",
       "text": "Arrow functions have their own this binding.",
       "type": "true-false",
       "options": [
@@ -1862,7 +1905,7 @@ Response `200 OK`:
       "is_correct": true
     },
     {
-      "question_id": "5d935a88-fae6-4681-93f2-29b54a5d8e34",
+      "question_id": "875ba569-18b5-4d23-8425-5a75fb7bd6ae",
       "text": "== converts both operands to a common type before comparing them.",
       "type": "true-false",
       "options": [
@@ -1883,7 +1926,7 @@ Response `200 OK`:
 
 After submitting, the user gets every question with the correct answers, their own selection and `is_correct`.
 
-#### 41. In-progress contests (a user who joined but has not submitted)
+#### 42. In-progress contests (a user who joined but has not submitted)
 
 `GET /me/in-progress` as late user
 
@@ -1892,15 +1935,15 @@ Response `200 OK`:
 {
   "items": [
     {
-      "contest_id": "209b58c1-d781-42d3-887b-6ad3df767e18",
-      "name": "Walkthrough Contest 1792644924022",
+      "contest_id": "07ae1c6e-cecb-4ac8-90e1-114dda9979b5",
+      "name": "Walkthrough Contest 1792648167994",
       "access_level": "normal",
       "prize": "Walkthrough trophy",
-      "start_time": "2026-10-22T04:55:25.754Z",
-      "end_time": "2026-10-22T04:55:51.731Z",
+      "start_time": "2026-10-22T05:49:29.310Z",
+      "end_time": "2026-10-22T05:49:55.269Z",
       "finalized_at": null,
       "winner_user_id": null,
-      "joined_at": "2026-10-22T04:55:27.910Z",
+      "joined_at": "2026-10-22T05:49:30.536Z",
       "question_count": 5,
       "status": "active",
       "missed": false
@@ -1921,16 +1964,16 @@ Response `200 OK`:
 
 Ranking is `rank() over (order by score desc, submitted_at asc)`: higher score first, earlier submission wins ties, equal rows share a rank.
 
-#### 42. Contest leaderboard with my position
+#### 43. Contest leaderboard with my position
 
-`GET /contests/209b58c1-d781-42d3-887b-6ad3df767e18/leaderboard` as user
+`GET /contests/07ae1c6e-cecb-4ac8-90e1-114dda9979b5/leaderboard` as user
 
 Response `200 OK`:
 ```json
 {
   "contest": {
-    "id": "209b58c1-d781-42d3-887b-6ad3df767e18",
-    "name": "Walkthrough Contest 1792644924022",
+    "id": "07ae1c6e-cecb-4ac8-90e1-114dda9979b5",
+    "name": "Walkthrough Contest 1792648167994",
     "status": "active",
     "prize": "Walkthrough trophy",
     "finalized_at": null,
@@ -1938,25 +1981,25 @@ Response `200 OK`:
   },
   "items": [
     {
-      "user_id": "9d8e2be3-a1f2-4ab7-9c3a-0e03d8280be4",
+      "user_id": "d1853d50-e4e8-487a-9a01-0de0a4c5157c",
       "name": "Walkthrough VIP",
       "score": 6,
-      "submitted_at": "2026-10-22T04:55:28.034Z",
+      "submitted_at": "2026-10-22T05:49:31.000Z",
       "rank": 1
     },
     {
-      "user_id": "e0cd21ba-ff84-452b-bfd5-0574a7a47e97",
+      "user_id": "e5ac78fd-0837-4919-85a2-b8faf02152b6",
       "name": "Walkthrough User",
       "score": 3,
-      "submitted_at": "2026-10-22T04:55:27.845Z",
+      "submitted_at": "2026-10-22T05:49:30.390Z",
       "rank": 2
     }
   ],
   "me": {
-    "user_id": "e0cd21ba-ff84-452b-bfd5-0574a7a47e97",
+    "user_id": "e5ac78fd-0837-4919-85a2-b8faf02152b6",
     "name": "Walkthrough User",
     "score": 3,
-    "submitted_at": "2026-10-22T04:55:27.845Z",
+    "submitted_at": "2026-10-22T05:49:30.390Z",
     "rank": 2
   },
   "total": 2,
@@ -1967,7 +2010,7 @@ Response `200 OK`:
 
 `me` is the caller's own row even when it is not on the current page. Guests get `me: null`.
 
-#### 43. Overall leaderboard
+#### 44. Overall leaderboard
 
 `GET /leaderboard` with no token
 
@@ -1976,7 +2019,7 @@ Response `200 OK`:
 {
   "items": [
     {
-      "user_id": "9d8e2be3-a1f2-4ab7-9c3a-0e03d8280be4",
+      "user_id": "d1853d50-e4e8-487a-9a01-0de0a4c5157c",
       "name": "Walkthrough VIP",
       "total_score": 6,
       "contests_played": 1,
@@ -1992,17 +2035,17 @@ Response `200 OK`:
       "rank": 2
     },
     {
-      "user_id": "39387cd5-2dab-44fc-8ae5-62371a63d171",
+      "user_id": "0a1d5c5f-a2f7-41d8-aea0-a07c8c226324",
       "name": "E2E VIP",
       "total_score": 3,
       "contests_played": 1,
       "prizes_won": 0,
       "rank": 3
     },
-    "... 12 more"
+    "... 14 more"
   ],
   "me": null,
-  "total": 15,
+  "total": 17,
   "page": 1,
   "pageSize": 20
 }
@@ -2014,9 +2057,9 @@ Total score across every finished contest, with `contests_played` and `prizes_wo
 
 When a contest ends, the finalizer picks the winner (highest score, earliest submission) and writes a `prizes` row if the contest has a prize. The worker runs every `FINALIZER_INTERVAL_MS` (5 seconds in this recording) and an admin can trigger it by hand.
 
-#### 44. Finalize while the contest is still running
+#### 45. Finalize while the contest is still running
 
-`POST /contests/209b58c1-d781-42d3-887b-6ad3df767e18/finalize` as admin
+`POST /contests/07ae1c6e-cecb-4ac8-90e1-114dda9979b5/finalize` as admin
 
 Response `409 Conflict`:
 ```json
@@ -2030,17 +2073,17 @@ Response `409 Conflict`:
 
 `409 CONTEST_NOT_ENDED`.
 
-_The script now waits 33 seconds for the contest to end and for the worker to run._
+_The script now waits 32 seconds for the contest to end and for the worker to run._
 
-#### 45. The contest after the worker ran
+#### 46. The contest after the worker ran
 
-`GET /contests/209b58c1-d781-42d3-887b-6ad3df767e18` with no token
+`GET /contests/07ae1c6e-cecb-4ac8-90e1-114dda9979b5` with no token
 
 Response `200 OK`:
 ```json
 {
-  "id": "209b58c1-d781-42d3-887b-6ad3df767e18",
-  "name": "Walkthrough Contest 1792644924022",
+  "id": "07ae1c6e-cecb-4ac8-90e1-114dda9979b5",
+  "name": "Walkthrough Contest 1792648167994",
   "description": "Edited by the walkthrough script.",
   "access_level": "normal",
   "difficulty": "intermediate",
@@ -2049,13 +2092,13 @@ Response `200 OK`:
     "backend"
   ],
   "prize": "Walkthrough trophy",
-  "start_time": "2026-10-22T04:55:25.754Z",
-  "end_time": "2026-10-22T04:55:51.731Z",
+  "start_time": "2026-10-22T05:49:29.310Z",
+  "end_time": "2026-10-22T05:49:55.269Z",
   "created_by": "95ffde0c-e3cb-4894-b8ab-8adfdfaa8892",
-  "finalized_at": "2026-10-22T04:55:57.613Z",
-  "winner_user_id": "9d8e2be3-a1f2-4ab7-9c3a-0e03d8280be4",
-  "created_at": "2026-10-22T04:55:27.422Z",
-  "updated_at": "2026-10-22T04:55:57.613Z",
+  "finalized_at": "2026-10-22T05:49:55.662Z",
+  "winner_user_id": "d1853d50-e4e8-487a-9a01-0de0a4c5157c",
+  "created_at": "2026-10-22T05:49:30.025Z",
+  "updated_at": "2026-10-22T05:49:55.662Z",
   "status": "ended",
   "can_participate": false,
   "question_count": 5,
@@ -2066,9 +2109,9 @@ Response `200 OK`:
 
 `status` is `ended`, `finalized_at` is set and `winner_user_id` is the VIP (full marks). Nobody called finalize; the worker did it. It takes `pg_try_advisory_xact_lock` first so several app instances never finalize the same contest twice, and the `update ... where finalized_at is null` is the second guard.
 
-#### 46. Finalize again by hand
+#### 47. Finalize again by hand
 
-`POST /contests/209b58c1-d781-42d3-887b-6ad3df767e18/finalize` as admin
+`POST /contests/07ae1c6e-cecb-4ac8-90e1-114dda9979b5/finalize` as admin
 
 Response `409 Conflict`:
 ```json
@@ -2082,7 +2125,7 @@ Response `409 Conflict`:
 
 `409 ALREADY_FINALIZED`. Finalization is idempotent.
 
-#### 47. Prizes of the winner
+#### 48. Prizes of the winner
 
 `GET /me/prizes` as vip
 
@@ -2091,11 +2134,11 @@ Response `200 OK`:
 {
   "items": [
     {
-      "id": "37deb5d9-3567-4e41-83a9-1fe3987e3060",
+      "id": "c9340a82-2f38-4017-b96f-7609b5b3278e",
       "prize": "Walkthrough trophy",
-      "awarded_at": "2026-10-22T04:55:57.613Z",
-      "contest_id": "209b58c1-d781-42d3-887b-6ad3df767e18",
-      "contest_name": "Walkthrough Contest 1792644924022"
+      "awarded_at": "2026-10-22T05:49:55.662Z",
+      "contest_id": "07ae1c6e-cecb-4ac8-90e1-114dda9979b5",
+      "contest_name": "Walkthrough Contest 1792648167994"
     }
   ],
   "total": 1
@@ -2104,7 +2147,7 @@ Response `200 OK`:
 
 One row per won contest, with the contest name.
 
-#### 48. Prizes of the runner-up
+#### 49. Prizes of the runner-up
 
 `GET /me/prizes` as user
 
@@ -2118,7 +2161,7 @@ Response `200 OK`:
 
 Only the winner gets the prize.
 
-#### 49. History of the winner
+#### 50. History of the winner
 
 `GET /me/history` as vip
 
@@ -2127,17 +2170,17 @@ Response `200 OK`:
 {
   "items": [
     {
-      "contest_id": "209b58c1-d781-42d3-887b-6ad3df767e18",
-      "name": "Walkthrough Contest 1792644924022",
+      "contest_id": "07ae1c6e-cecb-4ac8-90e1-114dda9979b5",
+      "name": "Walkthrough Contest 1792648167994",
       "access_level": "normal",
       "prize": "Walkthrough trophy",
-      "start_time": "2026-10-22T04:55:25.754Z",
-      "end_time": "2026-10-22T04:55:51.731Z",
-      "finalized_at": "2026-10-22T04:55:57.613Z",
-      "winner_user_id": "9d8e2be3-a1f2-4ab7-9c3a-0e03d8280be4",
+      "start_time": "2026-10-22T05:49:29.310Z",
+      "end_time": "2026-10-22T05:49:55.269Z",
+      "finalized_at": "2026-10-22T05:49:55.662Z",
+      "winner_user_id": "d1853d50-e4e8-487a-9a01-0de0a4c5157c",
       "score": 6,
-      "joined_at": "2026-10-22T04:55:28.016Z",
-      "submitted_at": "2026-10-22T04:55:28.034Z",
+      "joined_at": "2026-10-22T05:49:30.976Z",
+      "submitted_at": "2026-10-22T05:49:31.000Z",
       "rank": 1,
       "question_count": 5,
       "status": "ended",
@@ -2152,7 +2195,7 @@ Response `200 OK`:
 
 Finished contests, newest first, with `score`, `rank`, `won` and the contest status. The rank is computed with a correlated subquery, the same rule as the leaderboard.
 
-#### 50. In-progress after the contest ended
+#### 51. In-progress after the contest ended
 
 `GET /me/in-progress` as late user
 
@@ -2161,15 +2204,15 @@ Response `200 OK`:
 {
   "items": [
     {
-      "contest_id": "209b58c1-d781-42d3-887b-6ad3df767e18",
-      "name": "Walkthrough Contest 1792644924022",
+      "contest_id": "07ae1c6e-cecb-4ac8-90e1-114dda9979b5",
+      "name": "Walkthrough Contest 1792648167994",
       "access_level": "normal",
       "prize": "Walkthrough trophy",
-      "start_time": "2026-10-22T04:55:25.754Z",
-      "end_time": "2026-10-22T04:55:51.731Z",
-      "finalized_at": "2026-10-22T04:55:57.613Z",
-      "winner_user_id": "9d8e2be3-a1f2-4ab7-9c3a-0e03d8280be4",
-      "joined_at": "2026-10-22T04:55:27.910Z",
+      "start_time": "2026-10-22T05:49:29.310Z",
+      "end_time": "2026-10-22T05:49:55.269Z",
+      "finalized_at": "2026-10-22T05:49:55.662Z",
+      "winner_user_id": "d1853d50-e4e8-487a-9a01-0de0a4c5157c",
+      "joined_at": "2026-10-22T05:49:30.536Z",
       "question_count": 5,
       "status": "ended",
       "missed": true
@@ -2180,9 +2223,9 @@ Response `200 OK`:
 
 The user who joined but never submitted now sees `missed: true`.
 
-#### 51. Submit after the end
+#### 52. Submit after the end
 
-`POST /contests/209b58c1-d781-42d3-887b-6ad3df767e18/submit` as late user
+`POST /contests/07ae1c6e-cecb-4ac8-90e1-114dda9979b5/submit` as late user
 
 Request body:
 ```json
@@ -2207,7 +2250,7 @@ Response `409 Conflict`:
 
 The model (or the mock) only turns the sentence into a fixed set of filters; the database does the search with the same `applyFilters` as the list endpoint. Interpretations are cached for 10 minutes per normalised query.
 
-#### 52. "Show me active VIP contests"
+#### 53. "Show me active VIP contests"
 
 `GET /contests/search?q=Show%20me%20active%20VIP%20contests` with no token
 
@@ -2256,7 +2299,7 @@ Response `200 OK`:
 
 `filters` is what the sentence was reduced to; `null` means the sentence did not say. `cached: false` on the first call.
 
-#### 53. "Find beginner contests about JavaScript"
+#### 54. "Find beginner contests about JavaScript"
 
 `GET /contests/search?q=Find%20beginner%20contests%20about%20JavaScript` with no token
 
@@ -2307,7 +2350,7 @@ Response `200 OK`:
 
 Topics are matched against contest tags.
 
-#### 54. "I want a difficult JavaScript contest starting this week"
+#### 55. "I want a difficult JavaScript contest starting this week"
 
 `GET /contests/search?q=I%20want%20a%20difficult%20JavaScript%20contest%20starting%20this%20week` with no token
 
@@ -2336,7 +2379,7 @@ Response `200 OK`:
 
 "difficult" → `advanced`, "starting this week" → `upcoming` within 7 days.
 
-#### 55. "Show me contests related to backend development with prizes"
+#### 56. "Show me contests related to backend development with prizes"
 
 `GET /contests/search?q=Show%20me%20contests%20related%20to%20backend%20development%20with%20prizes` with no token
 
@@ -2400,8 +2443,8 @@ Response `200 OK`:
       "can_participate": false
     },
     {
-      "id": "209b58c1-d781-42d3-887b-6ad3df767e18",
-      "name": "Walkthrough Contest 1792644924022",
+      "id": "07ae1c6e-cecb-4ac8-90e1-114dda9979b5",
+      "name": "Walkthrough Contest 1792648167994",
       "description": "Edited by the walkthrough script.",
       "access_level": "normal",
       "difficulty": "intermediate",
@@ -2410,13 +2453,13 @@ Response `200 OK`:
         "backend"
       ],
       "prize": "Walkthrough trophy",
-      "start_time": "2026-10-22T04:55:25.754Z",
-      "end_time": "2026-10-22T04:55:51.731Z",
+      "start_time": "2026-10-22T05:49:29.310Z",
+      "end_time": "2026-10-22T05:49:55.269Z",
       "created_by": "95ffde0c-e3cb-4894-b8ab-8adfdfaa8892",
-      "finalized_at": "2026-10-22T04:55:57.613Z",
-      "winner_user_id": "9d8e2be3-a1f2-4ab7-9c3a-0e03d8280be4",
-      "created_at": "2026-10-22T04:55:27.422Z",
-      "updated_at": "2026-10-22T04:55:57.613Z",
+      "finalized_at": "2026-10-22T05:49:55.662Z",
+      "winner_user_id": "d1853d50-e4e8-487a-9a01-0de0a4c5157c",
+      "created_at": "2026-10-22T05:49:30.025Z",
+      "updated_at": "2026-10-22T05:49:55.662Z",
       "status": "ended",
       "can_participate": false
     },
@@ -2430,7 +2473,7 @@ Response `200 OK`:
 
 `hasPrize: true` becomes `where prize is not null`.
 
-#### 56. "show me ACTIVE   vip contests" (repeat)
+#### 57. "show me ACTIVE   vip contests" (repeat)
 
 `GET /contests/search?q=show%20me%20ACTIVE%20%20%20vip%20contests` with no token
 
@@ -2479,7 +2522,7 @@ Response `200 OK`:
 
 Case and whitespace are normalised, so this is the first query again: `cached: true`, no model call.
 
-#### 57. "typescript contests" (no such tag)
+#### 58. "typescript contests" (no such tag)
 
 `GET /contests/search?q=typescript%20contests` with no token
 
@@ -2535,7 +2578,7 @@ Three limiters from `express-rate-limit`: general (300 per 15 minutes per user o
 
 Twelve different searches by the same user within a minute → statuses `200, 200, 200, 200, 200, 200, 200, 200, 200, 200, 429, 429`.
 
-#### 58. The 11th search in a minute
+#### 59. The 11th search in a minute
 
 `GET /contests/search?q=rate limit probe 10` as user
 
@@ -2549,13 +2592,13 @@ Response `429 Too Many Requests`:
 }
 ```
 
-Headers: `RateLimit: "300-in-15min"; r=217; t=864, "10-in-1min"; r=0; t=60`, `RateLimit-Policy: "300-in-15min"; q=300; w=900; pk=:YmIwY2Q1MTM2YWU1:, "10-in-1min"; q=10; w=60; pk=:MzFmZTc5MDkyMmMz:`. The limiter runs before validation and before the cache, so cached queries count too.
+Headers: `RateLimit: "300-in-15min"; r=216; t=865, "10-in-1min"; r=0; t=60`, `RateLimit-Policy: "300-in-15min"; q=300; w=900; pk=:YmIwY2Q1MTM2YWU1:, "10-in-1min"; q=10; w=60; pk=:MmY4NjRmNDRhNzgx:`. The limiter runs before validation and before the cache, so cached queries count too.
 
 ### Error handling
 
 One error handler at the end of the chain. `AppError` carries status, code, message and optional details; everything else is mapped or becomes a `500` with the request id.
 
-#### 59. Malformed JSON body
+#### 60. Malformed JSON body
 
 `POST /auth/login` with no token
 
@@ -2576,7 +2619,7 @@ Response `400 Bad Request`:
 
 `express.json` throws a `SyntaxError`; the handler turns it into `400 INVALID_JSON`.
 
-#### 60. Unknown route
+#### 61. Unknown route
 
 `GET /nope` with no token
 
@@ -2596,7 +2639,7 @@ Response `404 Not Found`:
 
 Recorded against `http://localhost:3101/api`, a second instance started with `AI_PROVIDER=anthropic` and an API key whose account has no credit. The two AI endpoints fail cleanly; nothing else is affected.
 
-#### 61. Search with a key that has no credit
+#### 62. Search with a key that has no credit
 
 `GET /contests/search?q=active%20contests` with no token
 
@@ -2612,9 +2655,9 @@ Response `502 Bad Gateway`:
 
 The SDK error is mapped to `502 AI_UNAVAILABLE` with the provider status in the message. The real reason (the billing message) is in the server log with the request id, never in the response. Other mappings: provider rate limit → `503 AI_RATE_LIMITED`, bad key → `500 AI_MISCONFIGURED`, model refusal → `422 AI_REFUSED`, unusable output → `502 AI_BAD_OUTPUT`.
 
-#### 62. Generation with a key that has no credit
+#### 63. Generation with a key that has no credit
 
-`POST /contests/209b58c1-d781-42d3-887b-6ad3df767e18/questions/generate` as admin
+`POST /contests/07ae1c6e-cecb-4ac8-90e1-114dda9979b5/questions/generate` as admin
 
 Request body:
 ```json
@@ -2641,17 +2684,17 @@ Same mapping. With credit, this returns Claude-written questions and `provider: 
 
 The contest created above is removed. Deleting a contest cascades to its questions, participations, answers and prize.
 
-#### 63. Delete the contest
+#### 64. Delete the contest
 
-`DELETE /contests/209b58c1-d781-42d3-887b-6ad3df767e18` as admin
+`DELETE /contests/07ae1c6e-cecb-4ac8-90e1-114dda9979b5` as admin
 
 Response `204 No Content` (empty body)
 
 `204` with no body.
 
-#### 64. View the deleted contest
+#### 65. View the deleted contest
 
-`GET /contests/209b58c1-d781-42d3-887b-6ad3df767e18` with no token
+`GET /contests/07ae1c6e-cecb-4ac8-90e1-114dda9979b5` with no token
 
 Response `404 Not Found`:
 ```json

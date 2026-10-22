@@ -1,0 +1,42 @@
+# Render blueprint: one free web service serves the API and the built frontend,
+# plus a free PostgreSQL database. In the dashboard: New > Blueprint > pick the repo.
+#
+# The free database expires 30 days after creation and the free web service
+# sleeps after 15 minutes without traffic (the first request then takes ~1 min).
+services:
+  - type: web
+    name: contest-system
+    runtime: node
+    plan: free
+    buildCommand: npm ci --include=dev && npm run build && npm --prefix frontend ci --include=dev && npm --prefix frontend run build
+    startCommand: npm run migrate && npm run seed && npm start
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_VERSION
+        value: 22.19.0
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        fromDatabase:
+          name: contest-db
+          property: connectionString
+      - key: JWT_SECRET
+        generateValue: true
+      - key: STATIC_DIR
+        value: frontend/dist
+      - key: LOG_LEVEL
+        value: info
+      - key: FINALIZER_INTERVAL_MS
+        value: '60000'
+      # mock works without a key; set ANTHROPIC_API_KEY in the dashboard and
+      # switch this to "anthropic" to use the real model
+      - key: AI_PROVIDER
+        value: mock
+      - key: ANTHROPIC_API_KEY
+        sync: false
+
+databases:
+  - name: contest-db
+    plan: free
+    databaseName: contests
+    user: contests

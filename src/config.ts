@@ -1,4 +1,5 @@
 import 'dotenv/config';
+import path from 'node:path';
 
 function required(name: string): string {
   const value = process.env[name];
@@ -22,6 +23,8 @@ export const config = {
   jwtSecret: required('JWT_SECRET'),
   jwtExpiresIn: process.env.JWT_EXPIRES_IN ?? '1d',
   logLevel: process.env.LOG_LEVEL ?? 'info',
+  // set in production to serve the built frontend from the same origin
+  staticDir: process.env.STATIC_DIR ? path.resolve(process.env.STATIC_DIR) : '',
   ai: {
     provider: process.env.AI_PROVIDER ?? (apiKey ? 'anthropic' : 'mock'),
     apiKey,

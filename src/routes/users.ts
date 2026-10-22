@@ -3,11 +3,12 @@ import * as users from '../controllers/users';
 import { wrap } from '../middleware/asyncHandler';
 import { requireRole } from '../middleware/auth';
 import { validate } from '../middleware/validate';
-import { roleBody } from '../schemas/auth';
+import { roleBody, usersQuery } from '../schemas/auth';
 import { idParam } from '../schemas/common';
 
 export const usersRouter = Router();
 
+usersRouter.get('/', requireRole('admin'), validate(usersQuery, 'query'), wrap(users.list));
 usersRouter.patch(
   '/:id/role',
   requireRole('admin'),

@@ -70,6 +70,21 @@ describe('auth and roles', () => {
     expect(missing.status).toBe(404);
   });
 
+  it('lets admins list and search users', async () => {
+    const admin = await createUser('admin');
+    const user = await createUser('user');
+
+    expect((await api().get('/api/users').set(auth(user.token))).status).toBe(403);
+
+    const all = await api().get('/api/users').set(auth(admin.token));
+    expect(all.status).toBe(200);
+    expect(all.body.total).toBe(2);
+    expect(all.body.items[0]).not.toHaveProperty('password_hash');
+
+    const found = await api().get(`/api/users?q=${user.email}`).set(auth(admin.token));
+    expect(found.body.items.map((u: { id: string }) => u.id)).toEqual([user.id]);
+  });
+
   it('returns json 404 for unknown routes', async () => {
     const res = await api().get('/api/nothing-here');
     expect(res.status).toBe(404);

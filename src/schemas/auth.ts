@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { pageSchema } from './common';
 
 export const registerSchema = z.object({
   name: z.string().trim().min(1).max(100),
@@ -12,3 +13,5 @@ export const loginSchema = z.object({
 });
 
 export const roleBody = z.object({ role: z.enum(['user', 'vip', 'admin']) });
+
+export const usersQuery = pageSchema.extend({ q: z.string().trim().max(100).optional() });
