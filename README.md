@@ -216,6 +216,10 @@ Two collections, pick whichever reads better:
 
 Both need the seed data (`npm run seed`).
 
+## Walkthrough
+
+`docs/walkthrough.md` explains how the system is put together (stack, request flow, data model, roles, scoring, concurrency, auth, errors, rate limits, logging, AI, tests) and then lists every endpoint with a request and response recorded from a real run, 64 calls in all. `node scripts/record-api.mjs <baseUrl>` regenerates the recorded part.
+
 ## Database
 
 Schema lives in `migrations/` (knex) and a plain SQL dump is in `docs/schema.sql`. Tables: `users`, `contests`, `questions`, `participations`, `answers`, `prizes`. Notable bits: Postgres enums for roles, access level, difficulty and question type; a generated `tsvector` column with a GIN index for full-text search; a partial index on `(contest_id, score desc, submitted_at asc)` that backs the leaderboard; `unique (contest_id, user_id)` on participations.
@@ -237,6 +241,8 @@ migrations/ seeds/    knex
 tests/                vitest + supertest against a real postgres
 postman/              collections (by feature, by role) + environment
 docs/schema.sql       pg_dump of the schema
+docs/walkthrough.md   how it is built + every endpoint with a recorded request and response
+scripts/record-api.mjs regenerates the recorded part of the walkthrough
 ```
 
 A request goes router → `validate(schema)` → controller → service. Controllers are plain async functions wrapped by `asyncHandler`, so a thrown `AppError` (or anything else) lands in the error handler without try/catch in every handler.
