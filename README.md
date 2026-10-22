@@ -231,9 +231,13 @@ STATIC_DIR=frontend/dist npm start
 
 ## Deployment (Render, free tier)
 
-`render.yaml` is a Render blueprint: one free web service that builds the API and the frontend and serves both, plus a free PostgreSQL database. In the Render dashboard choose New → Blueprint, pick this repository and apply. The start command runs the migrations and the (idempotent) seed before starting. `JWT_SECRET` is generated, `DATABASE_URL` comes from the database, `AI_PROVIDER` is `mock` until you add `ANTHROPIC_API_KEY` in the dashboard and switch it to `anthropic`.
+`render.yaml` is a Render blueprint: one free web service that builds the API and the frontend and serves both. The database is a free Neon Postgres (Render allows only one free database per account and it expires after 30 days; Neon's free tier does not).
 
-Free-tier notes: the service sleeps after 15 minutes without traffic (first request then takes about a minute), and the free database expires 30 days after creation.
+1. On neon.tech create a project and copy the connection string, which ends in `?sslmode=require`. Node's `pg` driver reads `sslmode` from the URL, so no code change is needed.
+2. In the Render dashboard choose New → Blueprint, pick this repository and apply. Render asks for `DATABASE_URL`: paste the Neon string. `JWT_SECRET` is generated.
+3. The start command runs the migrations and the (idempotent) seed before starting. `AI_PROVIDER` is `mock` until you add `ANTHROPIC_API_KEY` in the dashboard and switch it to `anthropic`.
+
+Free-tier note: the service sleeps after 15 minutes without traffic, so the first request then takes about a minute.
 
 ## Postman
 
