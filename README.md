@@ -4,6 +4,8 @@ A backend for running quiz contests. Admins create contests and questions (by ha
 
 Node.js + TypeScript + Express + PostgreSQL, with a small React frontend in `frontend/` and a Postman collection in `postman/`.
 
+Live demo: https://contest-system-0ojk.onrender.com (frontend) and https://contest-system-0ojk.onrender.com/api/health (API). Free tier: the first request after idle time takes about a minute. Sign in with the seeded accounts below.
+
 Related docs: [PLAN.md](PLAN.md) (approach and architecture), [AI_USAGE.md](AI_USAGE.md) (how and where AI is used).
 
 ## Quick start
@@ -231,7 +233,7 @@ STATIC_DIR=frontend/dist npm start
 
 ## Deployment (Render, free tier)
 
-`render.yaml` is a Render blueprint: one free web service that builds the API and the frontend and serves both. The database is a free Neon Postgres (Render allows only one free database per account and it expires after 30 days; Neon's free tier does not).
+The demo at https://contest-system-0ojk.onrender.com runs this way. `render.yaml` is a Render blueprint: one free web service that builds the API and the frontend and serves both. The database is a free Neon Postgres (Render allows only one free database per account and it expires after 30 days; Neon's free tier does not).
 
 1. On neon.tech create a project and copy the connection string, which ends in `?sslmode=require`. Node's `pg` driver reads `sslmode` from the URL, so no code change is needed.
 2. In the Render dashboard choose New → Blueprint, pick this repository and apply. Render asks for `DATABASE_URL`: paste the Neon string. `JWT_SECRET` is generated.
