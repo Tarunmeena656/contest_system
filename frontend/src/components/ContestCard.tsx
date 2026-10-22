@@ -1,11 +1,18 @@
 import { Link } from 'react-router';
-import { fmtDate } from '../format';
+import { timeUntil } from '../format';
 import type { Contest } from '../types';
 import { AccessBadge, Badge, StatusBadge } from './Badge';
+import { ClockIcon, TrophyIcon } from './Icons';
+
+function timing(contest: Contest): string {
+  if (contest.status === 'active') return `Ends ${timeUntil(contest.end_time)}`;
+  if (contest.status === 'upcoming') return `Starts ${timeUntil(contest.start_time)}`;
+  return `Ended ${timeUntil(contest.end_time)}`;
+}
 
 export function ContestCard({ contest }: { contest: Contest }) {
   return (
-    <Link to={`/contests/${contest.id}`} className="card contest-card">
+    <Link to={`/contests/${contest.id}`} className={`card contest-card status-${contest.status}`}>
       <div className="card-head">
         <h3>{contest.name}</h3>
         <StatusBadge status={contest.status} />
@@ -18,20 +25,14 @@ export function ContestCard({ contest }: { contest: Contest }) {
           <Badge key={tag}>#{tag}</Badge>
         ))}
       </div>
-      <dl className="meta">
-        <div>
-          <dt>Starts</dt>
-          <dd>{fmtDate(contest.start_time)}</dd>
-        </div>
-        <div>
-          <dt>Ends</dt>
-          <dd>{fmtDate(contest.end_time)}</dd>
-        </div>
-        <div>
-          <dt>Prize</dt>
-          <dd>{contest.prize ?? 'none'}</dd>
-        </div>
-      </dl>
+      <div className="card-foot">
+        <span className={`icon-text ${contest.prize ? 'prize' : 'muted'}`}>
+          <TrophyIcon /> {contest.prize ?? 'No prize'}
+        </span>
+        <span className="icon-text muted">
+          <ClockIcon /> {timing(contest)}
+        </span>
+      </div>
       {contest.status === 'active' && contest.can_participate && <span className="hint">Open for you, join now</span>}
       {contest.access_level === 'vip' && !contest.can_participate && (
         <span className="hint muted">VIP members only</span>

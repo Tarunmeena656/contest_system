@@ -3,6 +3,7 @@ import { api } from '../api';
 import { useAuth } from '../auth';
 import { Badge } from '../components/Badge';
 import { ContestCard } from '../components/ContestCard';
+import { SearchIcon, SparklesIcon } from '../components/Icons';
 import { ErrorMessage, Loading, Message } from '../components/Message';
 import { useLoad } from '../hooks/useLoad';
 import type { Contest, Page, SearchResult } from '../types';
@@ -54,65 +55,87 @@ export function ContestsPage() {
     }
   }
 
+  function clearSearch() {
+    setSearch(null);
+    setSentence('');
+  }
+
   const contests = search ? search.items : (list.data?.items ?? []);
+  const all = list.data?.items ?? [];
   const understood = search
     ? Object.entries(search.filters).filter(([, v]) => v !== null && !(Array.isArray(v) && v.length === 0))
     : [];
+  const filtering = Object.values(filters).some(Boolean);
 
   return (
     <div className="stack">
-      <section className="card">
-        <h2>Find a contest</h2>
-        <form onSubmit={runSearch} className="search-row">
+      <section className="hero">
+        <p className="eyebrow">
+          <SparklesIcon /> Programming quiz contests
+        </p>
+        <h1>Compete, learn, win prizes.</h1>
+        <p className="lead">
+          Join a running contest, answer single-choice, multiple-choice and true/false questions, and climb the
+          leaderboard. Describe what you are looking for in plain words.
+        </p>
+        <form onSubmit={runSearch} className="hero-search">
+          <SearchIcon className="hero-search-icon" />
           <input
             value={sentence}
             onChange={(e) => setSentence(e.target.value)}
-            placeholder="Describe what you want, e.g. active VIP contests about Node.js with prizes"
+            placeholder="e.g. active VIP contests about Node.js with prizes"
             aria-label="Natural-language search"
           />
           <button type="submit" disabled={searching}>
             {searching ? 'Searching…' : 'Search'}
           </button>
-          {search && (
-            <button
-              type="button"
-              className="secondary"
-              onClick={() => {
-                setSearch(null);
-                setSentence('');
-              }}
-            >
-              Clear
-            </button>
-          )}
         </form>
         <div className="examples">
-          <span className="muted small">Try:</span>
           {examples.map((example) => (
             <button key={example} type="button" className="chip" onClick={() => setSentence(example)}>
               {example}
             </button>
           ))}
         </div>
-        <ErrorMessage error={searchError} />
-        {search && (
-          <p className="muted small">
-            Understood as:{' '}
-            {understood.length === 0
-              ? 'no filters, showing everything'
-              : understood.map(([key, value]) => (
+      </section>
+
+      <ErrorMessage error={searchError} />
+
+      {search && (
+        <div className="card understood">
+          <div>
+            <span className="muted small">Understood as</span>
+            <div className="badges">
+              {understood.length === 0 ? (
+                <span className="muted">no filters, showing everything</span>
+              ) : (
+                understood.map(([key, value]) => (
                   <Badge key={key} tone="blue">
                     {key}: {Array.isArray(value) ? value.join(', ') : String(value)}
                   </Badge>
-                ))}
-            {search.cached && ' · served from cache'}
-            {search.relaxed && ' · no tag matched the topics, so name and description were searched instead'}
-          </p>
-        )}
-      </section>
+                ))
+              )}
+              {search.cached && <Badge>from cache</Badge>}
+              {search.relaxed && <Badge tone="amber">matched on name and description</Badge>}
+            </div>
+          </div>
+          <button type="button" className="secondary" onClick={clearSearch}>
+            Clear search
+          </button>
+        </div>
+      )}
+
+      {!search && list.data && !filtering && (
+        <div className="stats">
+          <Stat value={all.filter((c) => c.status === 'active').length} label="Active now" tone="green" />
+          <Stat value={all.filter((c) => c.status === 'upcoming').length} label="Upcoming" tone="amber" />
+          <Stat value={all.filter((c) => c.access_level === 'vip').length} label="VIP only" tone="gold" />
+          <Stat value={all.filter((c) => c.prize).length} label="With a prize" tone="blue" />
+        </div>
+      )}
 
       {!search && (
-        <div className="filters">
+        <div className="toolbar">
           <select value={filters.status} onChange={(e) => update('status', e.target.value)} aria-label="Status">
             <option value="">Any status</option>
             <option value="active">Active</option>
@@ -146,18 +169,52 @@ export function ContestsPage() {
             placeholder="Search name or description"
             aria-label="Text search"
           />
+          {filtering && (
+            <button type="button" className="secondary" onClick={() => setFilters(emptyFilters)}>
+              Reset
+            </button>
+          )}
         </div>
       )}
+
+      <div className="section-head">
+        <h2>{search ? `Results for “${search.query}”` : 'Contests'}</h2>
+        <span className="muted small">{contests.length} shown</span>
+      </div>
 
       {!user && <Message>Browse freely. Sign in to join a contest and answer questions.</Message>}
       {list.loading && !search && <Loading what="Loading contests" />}
       <ErrorMessage error={list.error} />
-      {contests.length === 0 && !list.loading && <p className="muted">No contests match.</p>}
+      {contests.length === 0 && !list.loading && (
+        <div className="empty">
+          <p>No contests match.</p>
+          {search ? (
+            <button type="button" className="secondary" onClick={clearSearch}>
+              Show all contests
+            </button>
+          ) : (
+            filtering && (
+              <button type="button" className="secondary" onClick={() => setFilters(emptyFilters)}>
+                Reset filters
+              </button>
+            )
+          )}
+        </div>
+      )}
       <div className="grid">
         {contests.map((contest) => (
           <ContestCard key={contest.id} contest={contest} />
         ))}
       </div>
+    </div>
+  );
+}
+
+function Stat({ value, label, tone }: { value: number; label: string; tone: string }) {
+  return (
+    <div className={`stat stat-${tone}`}>
+      <span className="stat-value">{value}</span>
+      <span className="stat-label">{label}</span>
     </div>
   );
 }

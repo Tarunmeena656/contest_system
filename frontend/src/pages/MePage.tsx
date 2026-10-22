@@ -2,6 +2,7 @@ import { Link } from 'react-router';
 import { api } from '../api';
 import { useAuth } from '../auth';
 import { AccessBadge, Badge, StatusBadge } from '../components/Badge';
+import { TrophyIcon } from '../components/Icons';
 import { ErrorMessage, Loading } from '../components/Message';
 import { fmtDate } from '../format';
 import { useLoad } from '../hooks/useLoad';
@@ -101,10 +102,17 @@ export function MePage() {
         {prizes.data && prizes.data.items.length > 0 && (
           <ul className="prizes">
             {prizes.data.items.map((prize) => (
-              <li key={prize.id}>
-                <strong>{prize.prize}</strong> for{' '}
-                <Link to={`/contests/${prize.contest_id}`}>{prize.contest_name}</Link>, awarded{' '}
-                {fmtDate(prize.awarded_at)}
+              <li key={prize.id} className="prize-card">
+                <span className="prize-icon">
+                  <TrophyIcon width={22} height={22} />
+                </span>
+                <div>
+                  <strong>{prize.prize}</strong>
+                  <div className="muted small">
+                    for <Link to={`/contests/${prize.contest_id}`}>{prize.contest_name}</Link> · awarded{' '}
+                    {fmtDate(prize.awarded_at)}
+                  </div>
+                </div>
               </li>
             ))}
           </ul>

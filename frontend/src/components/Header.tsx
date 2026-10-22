@@ -1,6 +1,7 @@
 import { Link, NavLink, useNavigate } from 'react-router';
 import { useAuth } from '../auth';
 import { RoleBadge } from './Badge';
+import { TrophyIcon } from './Icons';
 
 export function Header() {
   const { user, logout } = useAuth();
@@ -10,6 +11,9 @@ export function Header() {
     <header className="topbar">
       <div className="container topbar-inner">
         <Link to="/" className="brand">
+          <span className="logo">
+            <TrophyIcon width={18} height={18} />
+          </span>
           Contest System
         </Link>
         <nav>
@@ -28,7 +32,7 @@ export function Header() {
         <div className="account">
           {user ? (
             <>
-              <span>
+              <span className="who">
                 {user.name} <RoleBadge role={user.role} />
               </span>
               <button

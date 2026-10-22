@@ -60,6 +60,15 @@ export function App() {
           <Route path="*" element={<Message kind="error">Page not found.</Message>} />
         </Routes>
       </main>
+      <footer className="footer">
+        <div className="container footer-inner">
+          <span>Contest System</span>
+          <span className="muted">Node.js · Express · PostgreSQL · React</span>
+          <a href="https://github.com/Tarunmeena656/contest_system" target="_blank" rel="noreferrer">
+            Source on GitHub
+          </a>
+        </div>
+      </footer>
     </>
   );
 }

@@ -10,7 +10,8 @@ import { ErrorMessage, Loading, Message } from '../components/Message';
 import { QuestionEditor } from '../components/QuestionEditor';
 import { QuestionForm } from '../components/QuestionForm';
 import { ResultView } from '../components/ResultView';
-import { fmtDate, plural, typeLabel } from '../format';
+import { ClockIcon } from '../components/Icons';
+import { fmtDate, plural, timeUntil, typeLabel } from '../format';
 import { useLoad } from '../hooks/useLoad';
 import type {
   Answer,
@@ -102,6 +103,14 @@ export function ContestPage() {
           <StatusBadge status={contest.status} />
         </div>
         <p>{contest.description}</p>
+        <p className="icon-text muted time-hint">
+          <ClockIcon />
+          {contest.status === 'active'
+            ? `Ends ${timeUntil(contest.end_time)}`
+            : contest.status === 'upcoming'
+              ? `Starts ${timeUntil(contest.start_time)}`
+              : `Ended ${timeUntil(contest.end_time)}`}
+        </p>
         <div className="badges">
           <AccessBadge level={contest.access_level} />
           <Badge tone="blue">{contest.difficulty}</Badge>
